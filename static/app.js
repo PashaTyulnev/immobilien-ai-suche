@@ -441,7 +441,13 @@ function bindDrag(card) {
     if (!down) return;
     down = false; card.classList.remove("dragging");
     swDragging = false;
-    if (Math.abs(dx) > 110) { decide(dx > 0); return; }
+    if (dx > 110) { decide(true); return; }
+    if (dx < -110) {
+      card.classList.add("snap"); card.style.transform = ""; dx = 0; stamps();
+      setTimeout(() => card.classList.remove("snap"), 200);
+      askReason();
+      return;
+    }
     if (Math.abs(dx) < 6 && Math.abs(dy) < 6) {  // Tippen: linkes Drittel = Foto zurück, sonst weiter
       const r = photo.getBoundingClientRect();
       photoStep(e.clientX - r.left < r.width * 0.3 ? -1 : 1);
@@ -486,61 +492,78 @@ function setPhoto(i) {
 }
 const photoStep = d => setPhoto(swPhoto + d);
 
-function decide(like) {
+function decide(like, reason) {
   const card = $("#sw-stage .sw-card:not(.back)");
   if (!swCurrent || !card) return;
   const l = swCurrent;
+  closeAsk();
   card.classList.add("fly");
   card.style.transform = `translate(${like ? 140 : -140}%, 40px) rotate(${like ? 25 : -25}deg)`;
   card.style.opacity = "0";
   UNDO.push({ id: l.id, rating: l.rating ?? null, favorite: l.favorite || 0, hidden: l.hidden || 0, reason: l.reason ?? null });
   setTimeout(() => {
     swCurrent = null;
-    swReasonFor = like ? null : l;
-    patch(l.id, like ? { rating: 1, favorite: 1, seen: 1 } : { rating: -1, hidden: 1, seen: 1 });
+    patch(l.id, like ? { rating: 1, favorite: 1, seen: 1 } : { rating: -1, hidden: 1, seen: 1, reason: reason || null });
     MATCH[like ? "likes" : "dislikes"]++;
     refreshMatch();
   }, 280);
 }
 
-// ---------- "Warum nicht?" ----------
+// ---------- "Warum nicht?" – wird beim Nein zuerst gefragt ----------
 function parseReason(r) {
   const [chips, ...free] = (r || "").split(";");
   return { chips: chips.split(",").map(s => s.trim()).filter(c => CHIPS.includes(c)), free: free.join(";").trim() };
 }
 
-function renderReason() {
+function askReason() {
+  // Karte bleibt stehen, das Grund-Feld legt sich darüber
+  if (!swCurrent) return;
+  if (swReasonFor) { confirmNo(); return; }  // zweites ✕ / ← = ablehnen
+  swReasonFor = swCurrent;
   const box = $("#sw-reason");
-  const l = swReasonFor;
-  box.hidden = !l;
-  if (!l) return;
-  if (box.dataset.id === l.id) return;  // schon offen -> Eingabe nicht überschreiben
-  box.dataset.id = l.id;
-  const { chips, free } = parseReason(l.reason);
+  const { chips, free } = parseReason(swCurrent.reason);
   box.innerHTML = `
-    <div class="sw-reason-head"><b>Warum nicht?</b> <span class="sub">${esc((l.title || "").slice(0, 60))}</span>
-      <button class="iconbtn" data-close-reason title="Schließen">✕</button></div>
+    <div class="sw-reason-head"><b>Warum nicht?</b>
+      <span class="sub">${esc((swCurrent.title || "").slice(0, 60))}</span>
+      <button class="iconbtn" data-cancel-reason title="Abbrechen (Esc)">✕</button></div>
     <div class="chips">${CHIPS.map((c, i) => `<button class="chip ${chips.includes(c) ? "on" : ""}" data-chip="${esc(c)}">${i < 9 ? `<kbd>${i + 1}</kbd>` : ""}${esc(c)}</button>`).join("")}</div>
-    <input id="sw-reason-text" type="text" placeholder="Eigener Grund, z.B. Gasheizung, kleines Bad, Straße zu laut …" value="${esc(free)}">`;
+    <input id="sw-reason-text" type="text" placeholder="Eigener Grund, z.B. Gasheizung, kleines Bad, Straße zu laut …" value="${esc(free)}">
+    <div class="sw-reason-actions">
+      <button class="btn" data-cancel-reason>Doch nicht <kbd>Esc</kbd></button>
+      <button class="btn danger" data-confirm-no>✕ Ablehnen <kbd>Enter</kbd></button>
+    </div>`;
+  box.hidden = false;
 }
 
-function saveReason() {
-  const l = swReasonFor;
-  if (!l) return;
+function currentReason() {
   const chips = $$("#sw-reason .chip.on").map(b => b.dataset.chip);
-  const free = $("#sw-reason-text").value.trim();
-  const reason = chips.join(", ") + (free ? "; " + free : "");
-  l.reason = reason || null;
-  fetch("/api/listings/" + encodeURIComponent(l.id), { method: "PATCH", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reason: l.reason }) }).then(refreshMatch);
+  const free = ($("#sw-reason-text")?.value || "").trim();
+  return chips.join(", ") + (free ? "; " + free : "");
+}
+
+function confirmNo() {
+  if (!swReasonFor) return;
+  decide(false, currentReason());
+}
+
+function closeAsk() {
+  swReasonFor = null;
+  const box = $("#sw-reason");
+  box.hidden = true;
+  box.innerHTML = "";
+}
+
+function renderReason() {
+  // Grund-Feld schließen, falls die gefragte Karte nicht mehr die aktuelle ist
+  if (swReasonFor && swReasonFor.id !== swCurrent?.id) closeAsk();
 }
 
 function undo() {
   const u = UNDO.pop();
   if (!u) return;
+  closeAsk();
   const { id, ...prev } = u;
   patch(id, prev);
-  if (swReasonFor?.id === id) swReasonFor = null;
   swCurrent = ALL.find(x => x.id === id) || null;
   swPhoto = 0;
   render();
@@ -562,27 +585,34 @@ async function refreshMatch() {
 function bindSwipe() {
   $("#btn-swipe").onclick = () => { F.swipe = !F.swipe; saveFilters(); render(); };
   $("#sw-yes").onclick = () => decide(true);
-  $("#sw-no").onclick = () => decide(false);
+  $("#sw-no").onclick = askReason;
   $("#sw-undo").onclick = undo;
   $("#sw-info-btn").onclick = () => swCurrent && openDetail(swCurrent.id);
   const rb = $("#sw-reason");
   rb.addEventListener("click", e => {
     const c = e.target.closest("[data-chip]");
-    if (c) { c.classList.toggle("on"); saveReason(); }
-    if (e.target.closest("[data-close-reason]")) { swReasonFor = null; rb.dataset.id = ""; renderReason(); }
+    if (c) c.classList.toggle("on");
+    if (e.target.closest("[data-confirm-no]")) confirmNo();
+    if (e.target.closest("[data-cancel-reason]")) closeAsk();
   });
-  rb.addEventListener("input", e => { if (e.target.id === "sw-reason-text") { clearTimeout(saveReason.t); saveReason.t = setTimeout(saveReason, 600); } });
-  rb.addEventListener("keydown", e => { if (e.key === "Enter") { saveReason(); e.target.blur(); } });
+  rb.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); confirmNo(); }
+    if (e.key === "Escape") { e.preventDefault(); closeAsk(); }
+  });
   document.addEventListener("keydown", e => {
     if (!F.swipe || $("#detail").open || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
+    if (swReasonFor) {  // Grund-Feld offen
+      if (/^[1-9]$/.test(e.key)) $$("#sw-reason .chip")[Number(e.key) - 1]?.classList.toggle("on");
+      else if (e.key === "Enter" || e.key === "ArrowLeft") { e.preventDefault(); confirmNo(); }
+      else if (e.key === "Escape") closeAsk();
+      else if (e.key.toLowerCase() === "t") { e.preventDefault(); $("#sw-reason-text")?.focus(); }
+      return;
+    }
     if (e.key === "ArrowRight") decide(true);
-    else if (e.key === "ArrowLeft") decide(false);
+    else if (e.key === "ArrowLeft") askReason();
     else if (e.key === " ") { e.preventDefault(); photoStep(1); }
     else if (e.key === "ArrowUp") { e.preventDefault(); swCurrent && openDetail(swCurrent.id); }
     else if (e.key.toLowerCase() === "z" || e.key === "Backspace") undo();
-    else if (swReasonFor && /^[1-9]$/.test(e.key)) {  // Zifferntasten = Schnellgrund an/aus
-      $$("#sw-reason .chip")[Number(e.key) - 1]?.classList.toggle("on"); saveReason();
-    } else if (swReasonFor && e.key.toLowerCase() === "t") { e.preventDefault(); $("#sw-reason-text")?.focus(); }
   });
 }
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wohnungssuche Dresden</title>
-<link rel="stylesheet" href="/static/style.css?v=8">
+<link rel="stylesheet" href="/static/style.css?v=10">
 </head>
 <body>
 <header class="top">
@@ -93,15 +93,17 @@
   <main>
     <section id="swipe" class="swipe" hidden>
       <div class="sw-info" id="sw-info"></div>
-      <div class="sw-stage" id="sw-stage"></div>
-      <div class="sw-reason" id="sw-reason" hidden></div>
+      <div class="sw-wrap">
+        <div class="sw-stage" id="sw-stage"></div>
+        <div class="sw-reason" id="sw-reason" hidden></div>
+      </div>
       <div class="sw-actions">
         <button class="sw-btn small" id="sw-undo" title="Rückgängig (Z)">↺</button>
         <button class="sw-btn no" id="sw-no" title="Gefällt mir nicht (←)">✕</button>
         <button class="sw-btn small" id="sw-info-btn" title="Details (↑)">i</button>
         <button class="sw-btn yes" id="sw-yes" title="Gefällt mir (→)">♥</button>
       </div>
-      <div class="sw-hint">← nein · → gefällt mir · Leertaste nächstes Foto · ↑ Details · Z rückgängig · nach ✕: 1–9 Grund, T eigener Text</div>
+      <div class="sw-hint">← nein · → gefällt mir · Leertaste nächstes Foto · ↑ Details · Z rückgängig · bei ✕: 1–9 Grund, T eigener Text, Enter ablehnen, Esc abbrechen</div>
     </section>
     <div id="grid" class="grid"></div>
     <div id="empty" class="empty" hidden>Keine Wohnungen für diese Filter.</div>
@@ -109,6 +111,6 @@
 </div>
 
 <dialog id="detail" class="detail"></dialog>
-<script src="/static/app.js?v=11"></script>
+<script src="/static/app.js?v=12"></script>
 </body>
 </html>

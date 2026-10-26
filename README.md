@@ -74,7 +74,8 @@ Aus den Bewertungen lernt `app/match.py` (logistische Regression über Miete, Fl
 Plattenbau-Score, Ausstattung, Stadtteil, Gebäudetyp und Wörter aus Titel/Beschreibung) einen **Match-Wert 0–100**.
 Ab dem ersten ♥ sucht es Ähnliche, ab 2 ♥ und 2 ✕ lernt es richtig.
 
-Nach einem ✕ erscheint „Warum nicht?“ mit Schnellgründen (Tasten 1–9) und Freitext (Taste T). Daraus werden Regeln:
+Bei ✕ / ← / Wischen nach links fragt die App zuerst „Warum nicht?“ (über der Karte): Schnellgründe (Tasten 1–9),
+Freitext (Taste T), Enter oder nochmal ← = ablehnen, Esc = abbrechen. Aus den Gründen werden Regeln:
 „zu teuer“ → Abzug ab dieser Preisklasse, „zu klein/groß“ → Flächengrenze, „Lage“ → Stadtteil, „Erdgeschoss“,
 „kein Balkon“, „Plattenbau/Block“, „befristet“, „Anbieter“; Freitext-Wörter (z.B. „Gasheizung“) werden in anderen
 Inseraten gesucht. Jeder zutreffende Grund zieht 20 Punkte vom Match ab und steht als „✕ …“ auf der Karte. Die Swipe-Reihenfolge und die Sortierung
