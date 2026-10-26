@@ -43,6 +43,32 @@ const isVonovia = l => { const w = words(F.vonoviaWords); const t = textOf(l); r
 const floorLabel = f => f == null ? null : f === 0 ? "EG" : f < 0 ? "UG" : f + ". OG";
 const isNew = l => !l.seen && (Date.now() / 1000 - l.first_seen) < 3 * 86400;
 
+// ---------- Anbieter, deren Inserate oft schon vergeben sind ----------
+// Gleicher Anbieter heißt je Portal leicht anders ("… GmbH" vs. "… GmbH - Frau X") -> bereinigter Schlüssel
+const GONE_RE = /nicht mehr online|inaktiv|deaktiviert|offline|vergeben|nicht mehr verfügbar|reservier/i;
+const WARN_AFTER = 2;  // ab so vielen eigenen "nicht mehr online"-Meldungen warnen
+let GONE_BY_PROVIDER = {};
+
+function providerKey(p) {
+  const k = (p || "").toLowerCase().split(" - ")[0]
+    .replace(/\b(gmbh|mbh|ag|kg|se|ug|co|e\.?\s?k\.?|haftungsbeschränkt|kundenservice)\b/g, " ")
+    .replace(/[^a-zäöüß0-9 ]/g, " ").split(/\s+/).filter(Boolean).slice(0, 3).join(" ");
+  return /^(privat|frau|herr)?$/.test(k) || k.startsWith("privat ") ? "" : k;  // Privatleute/Kontaktnamen nicht werten
+}
+
+function countGoneProviders() {
+  GONE_BY_PROVIDER = {};
+  for (const l of ALL) {
+    const k = providerKey(l.provider);
+    if (k && (l.user_gone || GONE_RE.test(l.reason || ""))) GONE_BY_PROVIDER[k] = (GONE_BY_PROVIDER[k] || 0) + 1;
+  }
+}
+
+function goneWarning(l) {
+  const n = GONE_BY_PROVIDER[providerKey(l.provider)] || 0;
+  return n >= WARN_AFTER && !l.user_gone ? n : 0;
+}
+
 // ---------- Duplikate: dieselbe Wohnung auf mehreren Portalen ----------
 // Stadtteil/PLZ und Kalt-/Warmmiete weichen zwischen Portalen oft ab, daher über Titel und Fläche gruppieren.
 let GROUP = {}, MEMBERS = {};
@@ -139,6 +165,7 @@ function sortFn() {
 
 // ---------- Rendern ----------
 function render() {
+  countGoneProviders();  // nach jeder Meldung sofort aktuell
   $("#swipe").hidden = !F.swipe;
   $("#grid").hidden = !!F.swipe;
   $("#btn-swipe").classList.toggle("on", !!F.swipe);
@@ -174,6 +201,7 @@ function card(l) {
     `<span class="badge">${esc(SOURCES[l.source] || l.source)}</span>`,
     pScore >= 50 ? `<span class="badge bad">Platte ${pScore}</span>` : pScore >= 30 ? `<span class="badge warn">Platte? ${pScore}</span>` : "",
     isVonovia(l) ? `<span class="badge bad">Vonovia</span>` : "",
+    goneWarning(l) ? `<span class="badge warn" title="${goneWarning(l)}× von dir als nicht mehr online gemeldet">⚠ oft schon vergeben</span>` : "",
     l.swap === 1 ? `<span class="badge bad">Tausch</span>` : "",
     l.temporary === 1 ? `<span class="badge warn">befristet</span>` : "",
     l.furnished === 1 ? `<span class="badge warn">möbliert</span>` : "",
@@ -272,6 +300,8 @@ async function openDetail(id) {
           <span class="online-state" id="d-online">${onlineText(l)}</span>
           <select id="d-status">${statuses.map(s => `<option ${s === (l.status || "") ? "selected" : ""} value="${s}">${s || "– Status –"}</option>`).join("")}</select>
         </div>
+        ${goneWarning(l) ? `<div class="box platte-mid">⚠ Von ${esc(l.provider)} hast du schon ${goneWarning(l)} Inserate als
+          „nicht mehr online“ gemeldet – vor dem Anfragen über „Zum Inserat“ prüfen, ob es noch aktiv ist.</div>` : ""}
         <textarea class="d-note" id="d-note" placeholder="Notizen (z.B. Besichtigungstermin, Eindruck)">${esc(l.note || "")}</textarea>
         <div class="box" data-phone-box><h4>Telefon</h4>${phoneBlock(l)}</div>
         ${l.summary ? `<div class="box"><h4>KI-Zusammenfassung</h4>${esc(l.summary)}</div>` : ""}
@@ -416,9 +446,12 @@ function swCard(l, back) {
     `<span class="badge">${esc(SOURCES[l.source] || l.source)}</span>`,
     pScore >= 50 ? `<span class="badge bad">Platte ${pScore}</span>` : pScore >= 30 ? `<span class="badge warn">Platte? ${pScore}</span>` : "",
     isVonovia(l) ? `<span class="badge bad">Vonovia</span>` : "",
+    goneWarning(l) ? `<span class="badge warn">⚠ oft schon vergeben</span>` : "",
     l.temporary === 1 ? `<span class="badge warn">befristet</span>` : "",
     l.furnished === 1 ? `<span class="badge warn">möbliert</span>` : "",
   ].join("");
+  const goneHint = goneWarning(l)
+    ? `<div class="sw-warn">⚠ Von ${esc(l.provider)} hast du schon ${goneWarning(l)} Inserate als „nicht mehr online“ gemeldet – vorher über „Zum Inserat“ prüfen.</div>` : "";
   const why = MATCH.reasons[l.id]?.length ? `<div class="sw-why">♥ passt: ${esc(MATCH.reasons[l.id].join(" · "))}</div>` : "";
   const warn = MATCH.warnings?.[l.id]?.length ? `<div class="sw-warn">${esc(MATCH.warnings[l.id].join(" · "))}</div>` : "";
   const yn = v => v === 1 ? "ja" : v === 0 ? "nein" : "–";
@@ -452,7 +485,7 @@ function swCard(l, back) {
       <div class="where">${esc([l.district, l.zip].filter(Boolean).join(" · ") || "Dresden")}</div>
       <div data-phone-box>${phoneBlock(l)}</div>
       <div class="facts">${facts.join("")}${yes.join("")}</div>
-      ${why}${warn}
+      ${why}${warn}${goneHint}
       ${l.summary ? `<div class="box"><h4>KI-Zusammenfassung</h4>${esc(l.summary)}</div>` : ""}
       <dl class="kv">${kv.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
       <div class="box ${pScore >= 50 ? "platte-hi" : pScore >= 30 ? "platte-mid" : ""}"><h4>Plattenbau-Score ${pScore} / 100</h4>

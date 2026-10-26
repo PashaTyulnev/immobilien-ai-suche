@@ -44,6 +44,7 @@ Erster Lauf dauert länger (jedes Exposé wird einmal geladen), danach werden nu
 ```
 
 Die App liest dann bei jedem Lauf die ImmoScout-Mails der letzten 14 Tage (nur lesend) und übernimmt die Inserate.
+Meldest du bei einem Anbieter zweimal „nicht mehr online“, bekommen seine übrigen Inserate das Abzeichen „⚠ oft schon vergeben“.
 Inserate, deren Foto ImmoScout gelöscht hat oder deren Mail älter als 14 Tage ist (`days` in config.json), gelten als vergeben. Ein vorhandenes Foto beweist nicht, dass das Inserat noch online ist – dann hilft „Ist vergeben“ in der Detailansicht bzw. der Grund „nicht mehr online“ (Taste 0) beim Swipen; solche Meldungen bleiben offline und zählen nicht fürs Lernen.
 `config.json` enthält damit ein Passwort – nicht weitergeben.
 

@@ -35,7 +35,8 @@ def index():
 @app.get("/api/listings")
 def listings(inactive: bool = False):
     # Favoriten/Likes auch offline mitliefern, damit sie mit "offline"-Hinweis sichtbar bleiben
-    where = "1=1" if inactive else "active=1 OR favorite=1 OR rating=1"
+    # + gemeldete/begründete Ablehnungen: werden für die Anbieter-Warnung ("oft schon vergeben") gezählt
+    where = "1=1" if inactive else "active=1 OR favorite=1 OR rating=1 OR user_gone=1 OR reason IS NOT NULL"
     return db.query(where, columns=LIST_COLUMNS + ",substr(raw_text,1,3000) AS raw_excerpt")
 
 
