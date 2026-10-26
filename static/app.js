@@ -298,7 +298,7 @@ function toggle(id, field) {
 
 // ---------- Swipe-Ansicht ----------
 const UNDO = [];
-let swCurrent = null, swPhoto = 0, swDragging = false;
+let swCurrent = null, swPhoto = 0, swDragging = false, swForce = false;
 
 function swipeDeck() {
   // Unbewertete Wohnungen aus den aktuellen Filtern; mit Modell die besten Matches zuerst
@@ -392,7 +392,10 @@ function renderSwipe() {
     return;
   }
   const deck = swipeDeck();
-  if (!swCurrent || !deck.includes(swCurrent)) { swCurrent = pickNext(deck); swPhoto = 0; }
+  // Aktuelle Karte über die ID halten: beim Nachladen während eines Suchlaufs wird ALL durch neue Objekte ersetzt
+  const keep = swCurrent && deck.find(l => l.id === swCurrent.id);
+  if (keep) swCurrent = keep;
+  else { swCurrent = pickNext(deck); swPhoto = 0; }
   const learned = MATCH.mode === "none"
     ? "Like ein paar Wohnungen – danach sortiere ich nach deinem Geschmack."
     : `${MATCH.likes} ♥ · ${MATCH.dislikes} ✕ · ${MATCH.mode === "gelernt" ? "Modell gelernt" : MATCH.mode === "Gründe" ? "nutzt deine Gründe" : "sucht Ähnliche (ab 2 ♥ und 2 ✕ lernt es richtig)"}`;
@@ -405,7 +408,10 @@ function renderSwipe() {
     stage.innerHTML = `<div class="sw-empty">Keine unbewerteten Wohnungen für diese Filter.<br>Filter lockern oder neuen Suchlauf starten.</div>`;
     return;
   }
-  const next = deck.find(l => l !== swCurrent);
+  // Gleiche Karte schon zu sehen -> nicht neu aufbauen (sonst springen Foto und Scrollposition beim Lesen)
+  if (!swForce && $(".sw-card:not(.back)", stage)?.dataset.id === swCurrent.id) return;
+  swForce = false;
+  const next = deck.find(l => l.id !== swCurrent.id);
   stage.innerHTML = (next ? swCard(next, true) : "") + swCard(swCurrent, false);
   bindDrag($(".sw-card:not(.back)", stage));
   // nächste Fotos vorladen, damit das Durchklicken flüssig ist
@@ -451,12 +457,15 @@ function bindDrag(card) {
   });
 }
 
+const BROKEN = new Set();  // Fotos, die nicht laden – bleiben auch nach dem Nachladen der Liste draußen
+
 function imgFail(el) {
   // Foto nicht ladbar (z.B. vom Portal gelöscht) -> aus der Liste werfen; ohne Fotos verschwindet das Inserat
+  BROKEN.add(el.dataset.u);
   const l = ALL.find(x => x.id === el.closest("[data-id]")?.dataset.id);
   if (!l || !l.images) return;
   l.images = l.images.filter(u => u !== el.dataset.u);
-  if (l === swCurrent) swPhoto = 0;
+  if (l.id === swCurrent?.id) { swPhoto = 0; swForce = true; }
   clearTimeout(imgFail.t);
   imgFail.t = setTimeout(render, 300);
 }
@@ -629,6 +638,7 @@ function bindInputs() {
 // ---------- Daten & Status ----------
 async function loadListings() {
   ALL = await (await fetch("/api/listings")).json();
+  if (BROKEN.size) ALL.forEach(l => { if (l.images) l.images = l.images.filter(u => !BROKEN.has(u)); });
   renderSources();
   render();
 }
