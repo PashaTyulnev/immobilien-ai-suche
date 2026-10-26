@@ -207,6 +207,7 @@ function card(l) {
         : `<small>${l.detail_done ? "Preis unbekannt" : "Details werden geladen…"}</small>`}</div>
       <div class="title">${esc(l.title || "(ohne Titel)")}</div>
       <div class="where">${esc([l.district, l.zip].filter(Boolean).join(" · ") || "Dresden")}${l.provider ? " · " + esc(l.provider) : ""}</div>
+      ${l.phones?.length ? `<div class="phone">${phoneLink(l.phones[0])}</div>` : ""}
       <div class="facts">${facts.join("")}${yes.join("")}</div>
       ${MATCH.reasons[l.id]?.length ? `<div class="match-why">passt: ${esc(MATCH.reasons[l.id].join(" · "))}</div>` : ""}
       <div class="meta"><span>${l.status ? esc(l.status) : ""}${l.note ? " 📝" : ""}</span><span>${ago(l.first_seen)}</span></div>
@@ -272,6 +273,7 @@ async function openDetail(id) {
           <select id="d-status">${statuses.map(s => `<option ${s === (l.status || "") ? "selected" : ""} value="${s}">${s || "– Status –"}</option>`).join("")}</select>
         </div>
         <textarea class="d-note" id="d-note" placeholder="Notizen (z.B. Besichtigungstermin, Eindruck)">${esc(l.note || "")}</textarea>
+        <div class="box" data-phone-box><h4>Telefon</h4>${phoneBlock(l)}</div>
         ${l.summary ? `<div class="box"><h4>KI-Zusammenfassung</h4>${esc(l.summary)}</div>` : ""}
         <div class="box ${p >= 50 ? "platte-hi" : p >= 30 ? "platte-mid" : ""}"><h4>Plattenbau-Score: ${p} / 100</h4>
           ${(l.plattenbau_reasons || []).map(esc).join(" · ") || "keine Hinweise"}</div>
@@ -304,6 +306,34 @@ async function openDetail(id) {
   $("#d-note", dlg).onchange = e => patch(id, { note: e.target.value });
   dlg.showModal();
 }
+
+function phoneLink(p) {
+  // tel:-Link: auf dem Handy direkt anrufen; Herkunft der Nummer als Hinweis daneben
+  return `<a class="tel" href="tel:${esc(p.nr.replace(/\s/g, ""))}" title="${esc(p.label)}">☎ ${esc(p.nr)}</a>` +
+         `<span class="tel-label">${esc(p.label)}</span>`;
+}
+
+// Portale, deren Inseratsseite die App für die Nummernsuche abrufen kann (Immowelt/ImmoScout blocken)
+const PHONE_FETCH = new Set(["kleinanzeigen", "ohnemakler", "wggesucht", "immobiliende"]);
+
+function phoneBlock(l) {
+  if (l.phones?.length) return `<div class="phone big">${l.phones.map(phoneLink).join("")}</div>`;
+  if (PHONE_FETCH.has(l.source)) return `<button class="btn" data-findphone="${esc(l.id)}">☎ Nummer suchen</button>`;
+  return `<span class="sub">keine Nummer – Kontakt über „Zum Inserat“</span>`;
+}
+
+async function findPhone(btn) {
+  const id = btn.dataset.findphone;
+  btn.disabled = true; btn.textContent = "suche …";
+  let res = {};
+  try { res = await (await fetch("/api/phone/" + encodeURIComponent(id), { method: "POST" })).json(); } catch {}
+  const l = ALL.find(x => x.id === id);
+  if (l) l.phones = res.phones || [];
+  const box = btn.closest("[data-phone-box]");
+  box.innerHTML = (box.querySelector("h4")?.outerHTML || "") +
+    (res.phones?.length ? phoneBlock(l || { phones: res.phones }) : `<span class="sub">keine Nummer im Inserat gefunden</span>`);
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-findphone]"); if (b) { e.stopPropagation(); findPhone(b); } }, true);
 
 function onlineText(l) {
   const when = l.checked_at ? ` (geprüft ${new Date(l.checked_at * 1000).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })})` : "";
@@ -420,6 +450,7 @@ function swCard(l, back) {
       <div class="sw-price">${w ? eur(w) : eur(l.price_cold)}<small>${w ? "warm" + (l.price_cold ? " · " + eur(l.price_cold) + " kalt" : "") : "kalt"}</small></div>
       <h3 class="sw-title">${esc(l.title || "")}</h3>
       <div class="where">${esc([l.district, l.zip].filter(Boolean).join(" · ") || "Dresden")}</div>
+      <div data-phone-box>${phoneBlock(l)}</div>
       <div class="facts">${facts.join("")}${yes.join("")}</div>
       ${why}${warn}
       ${l.summary ? `<div class="box"><h4>KI-Zusammenfassung</h4>${esc(l.summary)}</div>` : ""}
@@ -711,6 +742,7 @@ function bindInputs() {
   $("#btn-filters").onclick = () => $("#sidebar").classList.toggle("open");
   $("#btn-scrape").onclick = async () => { await fetch("/api/scrape", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); pollStatus(); };
   $("#grid").addEventListener("click", e => {
+    if (e.target.closest("a")) return;  // Telefon-Link: anrufen statt Details öffnen
     const c = e.target.closest(".card"); if (!c) return;
     const act = e.target.closest("[data-act]");
     if (act) { e.stopPropagation(); toggle(c.dataset.id, act.dataset.act === "fav" ? "favorite" : "hidden"); return; }

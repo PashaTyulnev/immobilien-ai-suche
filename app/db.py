@@ -16,6 +16,7 @@ DATA_FIELDS = {
     "furnished": "INTEGER", "wbs_required": "INTEGER", "temporary": "INTEGER", "swap": "INTEGER", "available_from": "TEXT",
     "images": "TEXT", "building_type": "TEXT", "summary": "TEXT", "raw_text": "TEXT", "published": "TEXT",
     "plattenbau_score": "INTEGER", "plattenbau_reasons": "TEXT",
+    "phones": "TEXT",  # [{"nr": "0351 8629290", "label": "aus dem Inserat"}, …]
 }
 STATE_FIELDS = {
     "first_seen": "REAL", "last_seen": "REAL", "active": "INTEGER DEFAULT 1",
@@ -31,7 +32,7 @@ USER_FIELDS = {
     "reason": "TEXT",  # warum nicht gefallen: "zu teuer, Lage; Freitext"
     "user_gone": "INTEGER DEFAULT 0",  # vom Nutzer als "nicht mehr online/vergeben" gemeldet -> bleibt offline
 }
-JSON_FIELDS = {"images", "plattenbau_reasons", "llm_fields", "search_fields", "detail_fields"}
+JSON_FIELDS = {"images", "plattenbau_reasons", "llm_fields", "search_fields", "detail_fields", "phones"}
 
 _lock = threading.RLock()
 _conn = sqlite3.connect(DB_PATH, check_same_thread=False)

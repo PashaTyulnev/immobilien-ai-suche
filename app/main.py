@@ -39,6 +39,14 @@ def listings(inactive: bool = False):
     return db.query(where, columns=LIST_COLUMNS + ",substr(raw_text,1,3000) AS raw_excerpt")
 
 
+@app.post("/api/phone/{lid:path}")
+def find_phone(lid: str):
+    """Inseratsseite neu laden und Telefonnummer suchen (z.B. Kleinanzeigen-Kontaktkasten)."""
+    if not db.get(lid):
+        raise HTTPException(404)
+    return {"phones": pipeline.fetch_phone(lid)}
+
+
 @app.post("/api/check/{lid:path}")
 def check(lid: str):
     if not db.get(lid):

@@ -94,3 +94,11 @@ Optional `config.json` im Projektordner anlegen (überschreibt Defaults aus `app
 ```
 
 Daten liegen in `data/wohnungen.db` (SQLite), Bilder werden in `data/img_cache/` zwischengespeichert.
+
+## Telefonnummern
+
+- Aus dem Inseratstext und (Kleinanzeigen) aus dem Kontaktkasten; Fax, PLZ, Preise und Objektnummern werden ignoriert.
+- Anbieter-Telefonbuch, bei jedem Suchlauf aktualisiert: immoboerse-dd.de (Antje Schmidt Immobilien – Zentrale und
+  Ansprechpartner; wird im Inserat eine Ansprechperson genannt, steht deren Nummer zuerst).
+- „☎ Nummer suchen“ lädt bei Bedarf die Inseratsseite neu (nicht bei Immowelt/ImmoScout, die blocken Abrufe).
+- Auf dem Handy startet ein Tipp auf die Nummer direkt den Anruf.

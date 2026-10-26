@@ -15,6 +15,7 @@ class Scraper:
     name = ""
     label = ""
     tracks_removal = True  # fehlt ein Inserat in den Ergebnissen, gilt es als offline
+    fetch_details = True  # Exposé-Seiten abrufbar (False: Portal blockt sie)
 
     def __init__(self, fetcher: Fetcher):
         self.fetcher = fetcher

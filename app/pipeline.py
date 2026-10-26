@@ -3,7 +3,7 @@ import threading
 import time
 import traceback
 
-from . import db, images, llm
+from . import db, images, llm, phones
 from .config import load_config
 from .db import DATA_FIELDS
 from .extract import DRESDEN_ZIP, extract_text, merge, plattenbau
@@ -45,6 +45,7 @@ def compute(row: dict) -> dict:
     if not full.get("district") and full.get("zip") in DRESDEN_ZIP:
         full["district"] = DRESDEN_ZIP[full["zip"]]
     full["plattenbau_score"], full["plattenbau_reasons"] = plattenbau(full)
+    full["phones"] = phones.for_listing({**full, "raw_text": row.get("raw_text"), "phones_found": detail.get("phones_found")}) or None
     return full
 
 
@@ -70,6 +71,25 @@ def check_listing(lid: str, sc=None) -> dict:
     if online is not None:
         db.update(lid, active=int(online and not row.get("user_gone")), checked_at=time.time())
     return {"online": online, "checked_at": time.time() if online is not None else row.get("checked_at")}
+
+
+def fetch_phone(lid: str) -> list[dict] | None:
+    """Exposé eines einzelnen Inserats neu laden (Nummer im Kontaktkasten/Text), Ergebnis speichern."""
+    row = db.get(lid)
+    sc = SCRAPERS[row["source"]](Fetcher(1.0))
+    if not sc.fetch_details:
+        return row.get("phones")  # Portal blockt Exposé-Abrufe (ImmoScout, Immowelt)
+    try:
+        d = sc.detail(row)
+    except Exception as e:
+        log(f"Telefonsuche {lid} fehlgeschlagen: {e}")
+        return row.get("phones")
+    if d.get("active") is False:
+        return row.get("phones")
+    raw = d.pop("raw_text", None)
+    db.update(lid, detail_fields={**(row.get("detail_fields") or {}), **{k: v for k, v in d.items() if v not in (None, "", [])}},
+              raw_text=raw or row.get("raw_text"))
+    return refresh(lid).get("phones")
 
 
 def check_watched(sc, name: str):
@@ -188,6 +208,8 @@ def run(only: list[str] | None = None):
         cfg = load_config()
         STATUS.update(running=True, started=time.time(), finished=None, sources={}, llm={})
         log("Suchlauf gestartet")
+        book = phones.refresh_phonebook(log)  # Anbieter-Telefonbuch (immoboerse-dd.de) aktualisieren
+        log(f"Telefonbuch: {sum(1 + len(b['people']) for b in book)} Nummern")
         done = threading.Event()
         llm_thread = threading.Thread(target=run_llm, args=(cfg["llm"], done), daemon=True)
         llm_thread.start()

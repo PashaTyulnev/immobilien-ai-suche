@@ -2,6 +2,7 @@
 import json
 import re
 
+from .. import phones
 from ..extract import floor_from, num
 from .base import SKIP_TITLE, Scraper, clean, node_text
 
@@ -103,6 +104,8 @@ class Kleinanzeigen(Scraper):
             if len(name) > 2:
                 out["provider"] = name.split("\n")[0]
                 break
+        # Telefonnummer im Kontaktkasten (gewerbliche Anbieter zeigen sie dort oft)
+        out["phones_found"] = phones.from_text(node_text(s.select_one("#viewad-contact"))) or None
         pub = node_text(s.select_one("#viewad-extra-info"))
         if m := re.search(r"\d{2}\.\d{2}\.\d{4}", pub):
             out["published"] = m.group()

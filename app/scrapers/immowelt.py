@@ -19,6 +19,7 @@ def _ufrn(html: str) -> dict:
 class Immowelt(Scraper):
     name = "immowelt"
     label = "Immowelt/Immonet"
+    fetch_details = False  # Exposés -> HTTP 403 nach wenigen Abrufen
 
     def search(self, page):
         r = self.fetcher.get(SEARCH.format(page=page))

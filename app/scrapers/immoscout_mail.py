@@ -99,6 +99,7 @@ class ImmoScoutMail(Scraper):
     name = "immoscout"
     label = "ImmoScout24 (Mail)"
     tracks_removal = True  # Inserate mit gelöschtem Foto bzw. älter als "days" gelten als offline
+    fetch_details = False  # Website blockt Abrufe
 
     def search(self, page):
         if page > 1:
