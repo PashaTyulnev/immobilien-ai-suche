@@ -42,8 +42,8 @@ Erster Lauf dauert länger (jedes Exposé wird einmal geladen), danach werden nu
 { "sources": { "immoscout": { "enabled": true, "user": "du@gmail.com", "app_password": "xxxx xxxx xxxx xxxx" } } }
 ```
 
-Die App liest dann bei jedem Lauf die ImmoScout-Mails der letzten 30 Tage (nur lesend) und übernimmt die Inserate.
-Inserate, deren Foto ImmoScout gelöscht hat, gelten als vergeben und werden ausgeblendet.
+Die App liest dann bei jedem Lauf die ImmoScout-Mails der letzten 14 Tage (nur lesend) und übernimmt die Inserate.
+Inserate, deren Foto ImmoScout gelöscht hat oder deren Mail älter als 14 Tage ist (`days` in config.json), gelten als vergeben. Ein vorhandenes Foto beweist nicht, dass das Inserat noch online ist – dann hilft „Ist vergeben“ in der Detailansicht bzw. der Grund „nicht mehr online“ (Taste 0) beim Swipen; solche Meldungen bleiben offline und zählen nicht fürs Lernen.
 `config.json` enthält damit ein Passwort – nicht weitergeben.
 
 ## Wie die Daten entstehen

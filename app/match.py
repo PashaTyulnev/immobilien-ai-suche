@@ -62,15 +62,20 @@ def _features(rows):
 
 # Schnellgründe aus der Swipe-Ansicht ("Warum nicht?") -> Regel: (Prüfung je Wohnung, abgeleitet aus den abgelehnten)
 CHIPS = ["zu teuer", "zu klein", "zu groß", "Lage", "Plattenbau/Block", "Erdgeschoss", "kein Balkon",
-         "befristet", "dunkel", "hässlich/alt", "Grundriss", "Anbieter"]
+         "befristet", "dunkel", "hässlich/alt", "Grundriss", "Anbieter", "nicht mehr online"]
 PENALTY = 20  # Abzug je zutreffendem Grund, max. 3 Gründe
+# "nicht mehr online" ist kein Geschmacksurteil -> solche Ablehnungen nicht zum Lernen verwenden
+GONE_REASON = re.compile(r"nicht mehr online|inaktiv|deaktiviert|offline|vergeben|nicht mehr verfügbar|reservier", re.I)
+# Füllwörter aus Freitext-Gründen, die als Regel fast jedes Inserat treffen würden
+FILLER = set("direkt gleich etwas wenig viele vielen mehr eher schon immer einfach leider wirklich total ziemlich "
+             "nicht keine kein keinen leider wäre hätte haben gibt dort hier diese dieser dieses".split())
 
 
 def _parse_reason(text: str | None) -> tuple[list[str], list[str]]:
     """'zu teuer, Lage; Gasheizung, kleine Küche' -> (Chips, Freitext-Wörter)"""
     chips_part, _, free = (text or "").partition(";")
     chips = [c.strip() for c in chips_part.split(",") if c.strip() in CHIPS]
-    words = [w.lower() for w in re.findall(r"[^\W\d_]{5,}", free) if w.lower() not in STOP]
+    words = [w.lower() for w in re.findall(r"[^\W\d_]{5,}", free) if w.lower() not in STOP and w.lower() not in FILLER]
     return chips, words
 
 
@@ -112,8 +117,11 @@ def _rules(rows) -> list[tuple[str, callable]]:
 
 def compute() -> dict:
     rows = db.query("active=1 OR rating IS NOT NULL",
-                    columns="id,active,rating,reason,provider,title,description,district,zip,building_type,price_cold,price_warm,"
-                            "costs_extra,costs_heat,area,rooms,floor,year_built,plattenbau_score," + ",".join(BOOLS))
+                    columns="id,active,rating,reason,user_gone,provider,title,description,district,zip,building_type,price_cold,"
+                            "price_warm,costs_extra,costs_heat,area,rooms,floor,year_built,plattenbau_score," + ",".join(BOOLS))
+    for r in rows:
+        if r["rating"] == -1 and (r.get("user_gone") or GONE_REASON.search(r.get("reason") or "")):
+            r["rating"] = None
     likes = [i for i, r in enumerate(rows) if r["rating"] == 1]
     dislikes = [i for i, r in enumerate(rows) if r["rating"] == -1]
     rules = _rules(rows)

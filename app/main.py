@@ -57,6 +57,8 @@ def listing(lid: str):
 @app.patch("/api/listings/{lid:path}")
 def edit(lid: str, data: dict = Body(...)):
     fields = {k: v for k, v in data.items() if k in USER_EDITABLE}
+    if "user_gone" in fields:  # "nicht mehr online" gemeldet bzw. zurückgenommen
+        fields["active"] = 0 if fields["user_gone"] else 1
     db.update(lid, **fields)
     return db.get(lid)
 

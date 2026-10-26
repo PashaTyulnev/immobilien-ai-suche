@@ -236,6 +236,7 @@ async function openDetail(id) {
           <button class="btn" data-dfav>${l.favorite ? "★ Favorit" : "☆ Merken"}</button>
           <button class="btn" data-dhide>${l.hidden ? "↺ Einblenden" : "✕ Ausblenden"}</button>
           <button class="btn" data-dcheck>Noch online?</button>
+          <button class="btn" data-dgone>${l.user_gone ? "↺ Doch noch online" : "Ist vergeben"}</button>
           <span class="online-state" id="d-online">${onlineText(l)}</span>
           <select id="d-status">${statuses.map(s => `<option ${s === (l.status || "") ? "selected" : ""} value="${s}">${s || "– Status –"}</option>`).join("")}</select>
         </div>
@@ -261,6 +262,11 @@ async function openDetail(id) {
     if (e.target.closest("[data-dfav]")) { toggle(id, "favorite"); e.target.textContent = local.favorite ? "★ Favorit" : "☆ Merken"; }
     if (e.target.closest("[data-dhide]")) { toggle(id, "hidden"); dlg.close(); }
     if (e.target.closest("[data-dcheck]")) checkOnline(id);
+    if (e.target.closest("[data-dgone]")) {  // selbst gemeldet: bleibt offline, auch wenn es wieder in einer Liste auftaucht
+      const g = local.user_gone ? 0 : 1;
+      patch(id, { user_gone: g, active: g ? 0 : 1 });
+      dlg.close();
+    }
   };
   dlg.onkeydown = e => { if (imgs.length > 1 && e.key === "ArrowRight") show(idx + 1); if (imgs.length > 1 && e.key === "ArrowLeft") show(idx - 1); };
   $("#d-status", dlg).onchange = e => patch(id, { status: e.target.value });
@@ -279,7 +285,7 @@ async function checkOnline(id) {
   let res = {};
   try { res = await (await fetch("/api/check/" + encodeURIComponent(id), { method: "POST" })).json(); } catch {}
   const l = ALL.find(x => x.id === id);
-  if (res.online == null) { el.textContent = "nicht prüfbar – Portal blockt gerade"; return; }
+  if (res.online == null) { el.textContent = "nicht sicher prüfbar (Portal blockt Abrufe) – bitte über „Zum Inserat“ ansehen"; return; }
   if (l) Object.assign(l, { active: res.online ? 1 : 0, checked_at: res.checked_at });
   el.innerHTML = onlineText(l || { active: res.online, checked_at: res.checked_at });
   render();
@@ -314,9 +320,11 @@ function pickNext(deck) {
   return deck[0];
 }
 
+// "nicht mehr online" ist kein Geschmack: Inserat bleibt offline und zählt nicht fürs Lernen (Taste 0)
+const GONE_CHIP = "nicht mehr online";
 // Schnellgründe für "Warum nicht?" – müssen zu CHIPS in app/match.py passen
 const CHIPS = ["zu teuer", "zu klein", "zu groß", "Lage", "Plattenbau/Block", "Erdgeschoss", "kein Balkon",
-               "befristet", "dunkel", "hässlich/alt", "Grundriss", "Anbieter"];
+               "befristet", "dunkel", "hässlich/alt", "Grundriss", "Anbieter", GONE_CHIP];
 let swReasonFor = null;  // zuletzt abgelehnte Wohnung, zu der man noch einen Grund angeben kann
 
 function swCard(l, back) {
@@ -500,10 +508,13 @@ function decide(like, reason) {
   card.classList.add("fly");
   card.style.transform = `translate(${like ? 140 : -140}%, 40px) rotate(${like ? 25 : -25}deg)`;
   card.style.opacity = "0";
-  UNDO.push({ id: l.id, rating: l.rating ?? null, favorite: l.favorite || 0, hidden: l.hidden || 0, reason: l.reason ?? null });
+  UNDO.push({ id: l.id, rating: l.rating ?? null, favorite: l.favorite || 0, hidden: l.hidden || 0, reason: l.reason ?? null,
+              user_gone: l.user_gone || 0 });
   setTimeout(() => {
     swCurrent = null;
-    patch(l.id, like ? { rating: 1, favorite: 1, seen: 1 } : { rating: -1, hidden: 1, seen: 1, reason: reason || null });
+    const gone = !like && (reason || "").includes(GONE_CHIP);
+    patch(l.id, like ? { rating: 1, favorite: 1, seen: 1 }
+                     : { rating: -1, hidden: 1, seen: 1, reason: reason || null, ...(gone ? { user_gone: 1, active: 0 } : {}) });
     MATCH[like ? "likes" : "dislikes"]++;
     refreshMatch();
   }, 280);
@@ -526,7 +537,7 @@ function askReason() {
     <div class="sw-reason-head"><b>Warum nicht?</b>
       <span class="sub">${esc((swCurrent.title || "").slice(0, 60))}</span>
       <button class="iconbtn" data-cancel-reason title="Abbrechen (Esc)">✕</button></div>
-    <div class="chips">${CHIPS.map((c, i) => `<button class="chip ${chips.includes(c) ? "on" : ""}" data-chip="${esc(c)}">${i < 9 ? `<kbd>${i + 1}</kbd>` : ""}${esc(c)}</button>`).join("")}</div>
+    <div class="chips">${CHIPS.map((c, i) => `<button class="chip ${chips.includes(c) ? "on" : ""}" data-chip="${esc(c)}">${i < 9 ? `<kbd>${i + 1}</kbd>` : c === GONE_CHIP ? "<kbd>0</kbd>" : ""}${esc(c)}</button>`).join("")}</div>
     <input id="sw-reason-text" type="text" placeholder="Eigener Grund, z.B. Gasheizung, kleines Bad, Straße zu laut …" value="${esc(free)}">
     <div class="sw-reason-actions">
       <button class="btn" data-cancel-reason>Doch nicht <kbd>Esc</kbd></button>
@@ -603,6 +614,7 @@ function bindSwipe() {
     if (!F.swipe || $("#detail").open || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName)) return;
     if (swReasonFor) {  // Grund-Feld offen
       if (/^[1-9]$/.test(e.key)) $$("#sw-reason .chip")[Number(e.key) - 1]?.classList.toggle("on");
+      else if (e.key === "0") $(`#sw-reason .chip[data-chip="${GONE_CHIP}"]`)?.classList.toggle("on");
       else if (e.key === "Enter" || e.key === "ArrowLeft") { e.preventDefault(); confirmNo(); }
       else if (e.key === "Escape") closeAsk();
       else if (e.key.toLowerCase() === "t") { e.preventDefault(); $("#sw-reason-text")?.focus(); }

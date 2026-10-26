@@ -68,7 +68,7 @@ def check_listing(lid: str, sc=None) -> dict:
         log(f"Prüfung {lid} fehlgeschlagen: {e}")
         online = None
     if online is not None:
-        db.update(lid, active=int(online), checked_at=time.time())
+        db.update(lid, active=int(online and not row.get("user_gone")), checked_at=time.time())
     return {"online": online, "checked_at": time.time() if online is not None else row.get("checked_at")}
 
 

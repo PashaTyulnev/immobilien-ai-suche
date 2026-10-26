@@ -142,5 +142,6 @@ class ImmoScoutMail(Scraper):
         return {}
 
     def check(self, item):
-        # Die Website blockt Abrufe; gelöschtes Foto ist das verlässliche Zeichen für "vergeben"
-        return None if not item.get("images") else photo_alive(item)
+        # Die Website blockt Abrufe. Gelöschtes Foto = sicher vergeben; vorhandenes Foto beweist nichts
+        # (ImmoScout liefert Fotos teils auch für deaktivierte Inserate noch aus) -> dann "unbekannt"
+        return False if item.get("images") and not photo_alive(item) else None

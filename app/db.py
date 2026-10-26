@@ -29,6 +29,7 @@ USER_FIELDS = {
     "status": "TEXT", "note": "TEXT", "seen": "INTEGER DEFAULT 0",
     "rating": "INTEGER",  # 1 = Like, -1 = Dislike (Swipe-Ansicht)
     "reason": "TEXT",  # warum nicht gefallen: "zu teuer, Lage; Freitext"
+    "user_gone": "INTEGER DEFAULT 0",  # vom Nutzer als "nicht mehr online/vergeben" gemeldet -> bleibt offline
 }
 JSON_FIELDS = {"images", "plattenbau_reasons", "llm_fields", "search_fields", "detail_fields"}
 
@@ -94,9 +95,11 @@ def upsert(item: dict) -> bool:
             _conn.execute(f"INSERT INTO listings ({cols}) VALUES ({','.join('?' * len(fields))})", list(fields.values()))
         else:
             # Spalten werden aus search/detail/llm-Feldern neu berechnet (pipeline.refresh), hier nur Rohdaten + Zustand
-            fields = {"search_fields": fields["search_fields"], "last_seen": now, "active": 1}
+            fields = {"search_fields": fields["search_fields"], "last_seen": now}
             sets = ",".join(f"{k}=?" for k in fields)
-            _conn.execute(f"UPDATE listings SET {sets} WHERE id=?", [*fields.values(), lid])
+            # wieder gesehen = wieder aktiv, außer der Nutzer hat es als vergeben gemeldet
+            _conn.execute(f"UPDATE listings SET {sets}, active = CASE WHEN user_gone=1 THEN 0 ELSE 1 END WHERE id=?",
+                          [*fields.values(), lid])
         _conn.commit()
     return not exists
 

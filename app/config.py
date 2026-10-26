@@ -18,7 +18,7 @@ DEFAULTS = {
         "immobiliende": {"enabled": True, "max_pages": 15},
         # ImmoScout24 über Suchauftrag-Mails per IMAP; App-Passwort in config.json eintragen, dann enabled: true
         "immoscout": {"enabled": False, "details": False, "user": "", "app_password": "",
-                      "imap_host": "imap.gmail.com", "days": 30},
+                      "imap_host": "imap.gmail.com", "days": 14},  # ältere Mail-Inserate gelten als vergeben
     },
     # Sekunden zwischen zwei Anfragen an dieselbe Seite (höflich bleiben, sonst Sperre)
     "request_delay": 1.5,
