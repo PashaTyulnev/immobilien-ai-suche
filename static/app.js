@@ -314,7 +314,7 @@ function phoneLink(p) {
 }
 
 // Portale, deren Inseratsseite die App für die Nummernsuche abrufen kann (Immowelt/ImmoScout blocken)
-const PHONE_FETCH = new Set(["kleinanzeigen", "ohnemakler", "wggesucht", "immobiliende"]);
+const PHONE_FETCH = new Set(["kleinanzeigen", "ohnemakler", "wggesucht", "immobiliende", "dresdden"]);
 
 function phoneBlock(l) {
   if (l.phones?.length) return `<div class="phone big">${l.phones.map(phoneLink).join("")}</div>`;

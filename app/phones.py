@@ -66,9 +66,24 @@ def scrape_immoboerse() -> dict:
     }
 
 
+def scrape_dresdden() -> dict:
+    """Johannes & Partner Immobilien (dresdden.de): Zentrale."""
+    r = requests.get("https://www.dresdden.de/", impersonate="chrome", timeout=30)
+    r.raise_for_status()
+    t = " ".join(BeautifulSoup(r.text, "lxml").get_text(" ").split())
+    nums = [n for n in (normalize(m.group()) for m in PHONE.finditer(t)) if n]
+    return {
+        "name": "Johannes & Partner Immobilien",
+        "match": ["johannes & partner", "johannes und partner", "johannes&partner", "dresdden"],
+        "phone": nums[0] if nums else None,
+        "people": [],
+        "source": "dresdden.de",
+    }
+
+
 def refresh_phonebook(log=print) -> list[dict]:
     book = []
-    for fn in (scrape_immoboerse,):
+    for fn in (scrape_immoboerse, scrape_dresdden):
         try:
             book.append(fn())
         except Exception as e:  # Telefonbuch ist ein Zusatz – Fehler sollen den Lauf nicht stoppen

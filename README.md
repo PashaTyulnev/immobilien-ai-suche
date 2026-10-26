@@ -18,6 +18,7 @@ Beim ersten Start wird automatisch ein Suchlauf gestartet, danach alle 4 Stunden
 | ohne-makler.net | ✓ (nur Dresdner PLZ) |
 | WG-Gesucht (Wohnungen + 1-Zi.-Wohnungen) | ✓ langsam abgefragt; zeigt bei zu vielen Abrufen ein Captcha → Quelle wird dann für den Lauf übersprungen |
 | immobilien.de | ✓ |
+| dresdden.de (Johannes & Partner Immobilien) | ✓ eigene Mietangebote des Maklers, mit Telefonnummer |
 | ImmoScout24 | über Suchauftrag-Mails (IMAP), siehe unten – die Website selbst blockt Bots (HTTP 401) |
 | Quoka | ✗ keine Städtesuche mehr, kaum Dresdner Angebote |
 
@@ -98,7 +99,7 @@ Daten liegen in `data/wohnungen.db` (SQLite), Bilder werden in `data/img_cache/`
 ## Telefonnummern
 
 - Aus dem Inseratstext und (Kleinanzeigen) aus dem Kontaktkasten; Fax, PLZ, Preise und Objektnummern werden ignoriert.
-- Anbieter-Telefonbuch, bei jedem Suchlauf aktualisiert: immoboerse-dd.de (Antje Schmidt Immobilien – Zentrale und
+- Anbieter-Telefonbuch, bei jedem Suchlauf aktualisiert: dresdden.de (Johannes & Partner) und immoboerse-dd.de (Antje Schmidt Immobilien – Zentrale und
   Ansprechpartner; wird im Inserat eine Ansprechperson genannt, steht deren Nummer zuerst).
 - „☎ Nummer suchen“ lädt bei Bedarf die Inseratsseite neu (nicht bei Immowelt/ImmoScout, die blocken Abrufe).
 - Auf dem Handy startet ein Tipp auf die Nummer direkt den Anruf.
