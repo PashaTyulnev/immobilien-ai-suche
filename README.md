@@ -1,0 +1,88 @@
+# Wohnungssuche Dresden
+
+Persönliches Tool: sammelt Mietwohnungen in Dresden von mehreren Portalen, extrahiert die Eckdaten
+(Kosten, Fläche, Zimmer, Etage, Balkon, Baujahr …) und zeigt alles in einer filterbaren Übersicht mit Fotos.
+
+## Start
+
+Doppelklick auf `start.bat` → öffnet <http://localhost:8765>.
+Beim ersten Start wird automatisch ein Suchlauf gestartet, danach alle 4 Stunden (solange der Server läuft).
+„Jetzt suchen“ startet sofort einen Lauf.
+
+## Quellen
+
+| Quelle | Status |
+|---|---|
+| Immowelt (inkl. Immonet) | ✓ |
+| Kleinanzeigen | ✓ |
+| ohne-makler.net | ✓ (nur Dresdner PLZ) |
+| WG-Gesucht (Wohnungen + 1-Zi.-Wohnungen) | ✓ langsam abgefragt; zeigt bei zu vielen Abrufen ein Captcha → Quelle wird dann für den Lauf übersprungen |
+| immobilien.de | ✓ |
+| ImmoScout24 | über Suchauftrag-Mails (IMAP), siehe unten – die Website selbst blockt Bots (HTTP 401) |
+| Quoka | ✗ keine Städtesuche mehr, kaum Dresdner Angebote |
+
+Erster Lauf dauert länger (jedes Exposé wird einmal geladen), danach werden nur neue Inserate nachgeladen.
+Inserate, die nicht mehr in den Ergebnissen auftauchen, werden als „offline“ markiert.
+
+### ImmoScout24 einrichten
+
+1. Bei ImmoScout24 einen Suchauftrag (Mietwohnung Dresden, Benachrichtigung „sofort“) an deine Gmail-Adresse anlegen.
+2. Im Google-Konto (2-Faktor-Anmeldung muss an sein) unter <https://myaccount.google.com/apppasswords>
+   ein App-Passwort erstellen. Gmail-Einstellungen → „Weiterleitung und POP/IMAP“ → IMAP aktivieren.
+3. `config.json` im Projektordner anlegen bzw. ergänzen:
+
+```json
+{ "sources": { "immoscout": { "enabled": true, "user": "du@gmail.com", "app_password": "xxxx xxxx xxxx xxxx" } } }
+```
+
+Die App liest dann bei jedem Lauf die ImmoScout-Mails der letzten 30 Tage (nur lesend) und übernimmt die Inserate.
+Inserate, deren Foto ImmoScout gelöscht hat, gelten als vergeben und werden ausgeblendet.
+`config.json` enthält damit ein Passwort – nicht weitergeben.
+
+## Wie die Daten entstehen
+
+1. **Strukturierte Daten** der Portale (z.B. Immowelt-JSON, Kleinanzeigen-Merkmalliste)
+2. **Regex-Extraktion** aus dem Exposé-Text für fehlende Felder (`app/extract.py`)
+3. **Lokales LLM** über Ollama (`qwen2.5:14b`) füllt restliche Lücken, bestimmt den Gebäudetyp
+   und schreibt eine Kurzzusammenfassung (`app/llm.py`). Läuft im Hintergrund parallel zum Scraping.
+
+## Filter
+
+- **Vonovia & Töchter**: Wortliste (Vonovia, BUWOG, Deutsche Wohnen, Südost Woba, WOBA, GAGFAH) in Anbieter
+  und Text – in der Seitenleiste editierbar.
+- **Plattenbau-Score 0–100**: Baujahr 1960–1991, Geschosszahl, Stadtteil (Gorbitz, Prohlis, Reick, …),
+  Stichworte (WBS 70, P2, Plattenbau …), KI-Gebäudetyp; Altbau/Neubau-Merkmale ziehen ab.
+  Schwelle per Schieberegler; die Gründe stehen in der Detailansicht.
+- Befristet/Zwischenmiete, möbliert, WBS-pflichtig, Erdgeschoss, eigene Ausschluss-Wörter.
+- Duplikate (gleiche Wohnung auf mehreren Portalen) werden zusammengefasst.
+- Favoriten, Ausblenden, Status (angefragt, Besichtigung …) und Notizen pro Wohnung.
+
+## Swipen & Match
+
+„♥ Swipen“ oben rechts zeigt eine Wohnung nach der anderen (nur die, die zu den aktuellen Filtern passen).
+→ / ♥ = gefällt mir (landet in ★ Favoriten), ← / ✕ = nein (wird ausgeblendet), Leertaste/Tippen = nächstes Foto,
+↑ = Details, Z = rückgängig. Auf dem Handy kann man die Karte wischen.
+
+Aus den Bewertungen lernt `app/match.py` (logistische Regression über Miete, Fläche, Zimmer, Etage, Baujahr,
+Plattenbau-Score, Ausstattung, Stadtteil, Gebäudetyp und Wörter aus Titel/Beschreibung) einen **Match-Wert 0–100**.
+Ab dem ersten ♥ sucht es Ähnliche, ab 2 ♥ und 2 ✕ lernt es richtig.
+
+Nach einem ✕ erscheint „Warum nicht?“ mit Schnellgründen (Tasten 1–9) und Freitext (Taste T). Daraus werden Regeln:
+„zu teuer“ → Abzug ab dieser Preisklasse, „zu klein/groß“ → Flächengrenze, „Lage“ → Stadtteil, „Erdgeschoss“,
+„kein Balkon“, „Plattenbau/Block“, „befristet“, „Anbieter“; Freitext-Wörter (z.B. „Gasheizung“) werden in anderen
+Inseraten gesucht. Jeder zutreffende Grund zieht 20 Punkte vom Match ab und steht als „✕ …“ auf der Karte. Die Swipe-Reihenfolge und die Sortierung
+„Passt zu mir“ nutzen den Wert; jede 5. Karte ist bewusst zufällig, damit das Modell nicht nur Bekanntes bestätigt.
+
+## Konfiguration
+
+Optional `config.json` im Projektordner anlegen (überschreibt Defaults aus `app/config.py`), z.B.:
+
+```json
+{
+  "auto_scrape_hours": 2,
+  "llm": {"model": "llama3.1:8b"},
+  "sources": {"wggesucht": {"enabled": false}}
+}
+```
+
+Daten liegen in `data/wohnungen.db` (SQLite), Bilder werden in `data/img_cache/` zwischengespeichert.

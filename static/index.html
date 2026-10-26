@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wohnungssuche Dresden</title>
+<link rel="stylesheet" href="/static/style.css?v=7">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="logo">⌂</span>
+    <div>
+      <h1>Wohnungssuche Dresden</h1>
+      <div class="sub" id="counts">–</div>
+    </div>
+  </div>
+  <div class="top-right">
+    <div id="runstatus" class="runstatus"></div>
+    <button id="btn-swipe" class="btn swipe-toggle">♥ Swipen</button>
+    <button id="btn-scrape" class="btn primary">Jetzt suchen</button>
+    <button id="btn-filters" class="btn only-mobile">Filter</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside id="sidebar" class="sidebar">
+    <div class="tabs" id="view-tabs">
+      <button data-view="all" class="active">Alle</button>
+      <button data-view="new">Neu</button>
+      <button data-view="fav">★ Favoriten</button>
+      <button data-view="hidden">Ausgeblendet</button>
+    </div>
+
+    <label class="field"><span>Suche</span><input id="f-q" type="search" placeholder="z.B. Neustadt, Dielen, Wanne"></label>
+
+    <div class="field">
+      <span>Miete (€) <select id="f-pricemode"><option value="warm">warm</option><option value="cold">kalt</option></select></span>
+      <div class="range"><input id="f-pmin" type="number" placeholder="min" step="50"><input id="f-pmax" type="number" placeholder="max" step="50"></div>
+    </div>
+    <div class="field"><span>Fläche (m²)</span>
+      <div class="range"><input id="f-amin" type="number" placeholder="min" step="5"><input id="f-amax" type="number" placeholder="max" step="5"></div></div>
+    <div class="field"><span>Zimmer</span>
+      <div class="range"><input id="f-rmin" type="number" placeholder="min" step="0.5"><input id="f-rmax" type="number" placeholder="max" step="0.5"></div></div>
+    <div class="field"><span>Etage</span>
+      <div class="range"><input id="f-flmin" type="number" placeholder="min"><input id="f-flmax" type="number" placeholder="max"></div></div>
+
+    <fieldset>
+      <legend>Muss haben</legend>
+      <label class="chk"><input type="checkbox" id="f-balcony"> Balkon / Loggia / Terrasse</label>
+      <label class="chk"><input type="checkbox" id="f-kitchen"> Einbauküche</label>
+      <label class="chk"><input type="checkbox" id="f-elevator"> Aufzug</label>
+      <label class="chk"><input type="checkbox" id="f-garden"> Garten</label>
+      <label class="chk"><input type="checkbox" id="f-photos"> Nur mit Fotos</label>
+      <label class="chk"><input type="checkbox" id="f-unknown"> Unbekannte Werte trotzdem zeigen</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Ausschließen</legend>
+      <label class="chk"><input type="checkbox" id="f-novonovia"> Vonovia &amp; Töchter</label>
+      <label class="chk"><input type="checkbox" id="f-noplatte"> Plattenbau ab Score <b id="platte-val">50</b></label>
+      <input type="range" id="f-platte" min="10" max="100" step="5">
+      <label class="chk"><input type="checkbox" id="f-noprice"> Ohne Preis</label>
+      <label class="chk"><input type="checkbox" id="f-noswap"> Tauschwohnungen</label>
+      <label class="chk"><input type="checkbox" id="f-notemp"> Befristet / Zwischenmiete</label>
+      <label class="chk"><input type="checkbox" id="f-nofurn"> Möbliert / Wohnen auf Zeit</label>
+      <label class="chk"><input type="checkbox" id="f-nowbs"> WBS erforderlich</label>
+      <label class="chk"><input type="checkbox" id="f-noground"> Erdgeschoss</label>
+      <label class="chk"><input type="checkbox" id="f-dupes"> Duplikate zusammenfassen</label>
+      <label class="field"><span>Anbieter-Wörter (Vonovia-Liste)</span>
+        <textarea id="f-vonovia-words" rows="2"></textarea></label>
+      <label class="field"><span>Eigene Ausschluss-Wörter</span>
+        <textarea id="f-words" rows="2" placeholder="z.B. Gorbitz, Prohlis, Seniorenwohnung"></textarea></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Quellen</legend>
+      <div id="f-sources"></div>
+    </fieldset>
+
+    <label class="field"><span>Sortierung</span>
+      <select id="f-sort">
+        <option value="match">Passt zu mir (Match)</option>
+        <option value="new">Neueste zuerst</option>
+        <option value="price">Miete aufsteigend</option>
+        <option value="sqm">€/m² aufsteigend</option>
+        <option value="area">Fläche absteigend</option>
+        <option value="platte">Plattenbau-Score aufsteigend</option>
+      </select></label>
+    <button id="btn-reset" class="btn ghost">Filter zurücksetzen</button>
+  </aside>
+
+  <main>
+    <section id="swipe" class="swipe" hidden>
+      <div class="sw-info" id="sw-info"></div>
+      <div class="sw-stage" id="sw-stage"></div>
+      <div class="sw-reason" id="sw-reason" hidden></div>
+      <div class="sw-actions">
+        <button class="sw-btn small" id="sw-undo" title="Rückgängig (Z)">↺</button>
+        <button class="sw-btn no" id="sw-no" title="Gefällt mir nicht (←)">✕</button>
+        <button class="sw-btn small" id="sw-info-btn" title="Details (↑)">i</button>
+        <button class="sw-btn yes" id="sw-yes" title="Gefällt mir (→)">♥</button>
+      </div>
+      <div class="sw-hint">← nein · → gefällt mir · Leertaste nächstes Foto · ↑ Details · Z rückgängig · nach ✕: 1–9 Grund, T eigener Text</div>
+    </section>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" hidden>Keine Wohnungen für diese Filter.</div>
+  </main>
+</div>
+
+<dialog id="detail" class="detail"></dialog>
+<script src="/static/app.js?v=9"></script>
+</body>
+</html>
