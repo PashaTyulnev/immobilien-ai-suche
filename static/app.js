@@ -43,15 +43,46 @@ const isVonovia = l => { const w = words(F.vonoviaWords); const t = textOf(l); r
 const floorLabel = f => f == null ? null : f === 0 ? "EG" : f < 0 ? "UG" : f + ". OG";
 const isNew = l => !l.seen && (Date.now() / 1000 - l.first_seen) < 3 * 86400;
 
-function dupKey(l) {
-  if (!l.area || !(l.price_cold || l.price_warm)) return null;
-  return [l.zip || "", Math.round(l.area), Math.round((l.price_cold || l.price_warm) / 10)].join("|");
+// ---------- Duplikate: dieselbe Wohnung auf mehreren Portalen ----------
+// Stadtteil/PLZ und Kalt-/Warmmiete weichen zwischen Portalen oft ab, daher über Titel und Fläche gruppieren.
+let GROUP = {}, MEMBERS = {};
+const normTitle = t => (t || "").toLowerCase().replace(/[^a-zäöüß0-9]+/g, " ").trim();
+
+function buildGroups() {
+  const parent = {};
+  const find = x => parent[x] === x ? x : (parent[x] = find(parent[x]));
+  const union = (a, b) => { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
+  const byKey = new Map(), byArea = new Map(), byId = new Map(ALL.map(l => [l.id, l]));
+  const link = (k, id) => byKey.has(k) ? union(byKey.get(k), id) : byKey.set(k, id);
+  // gleicher Preis: Kalt mit Kalt bzw. Warm mit Warm vergleichen (Portale nennen mal das eine, mal das andere)
+  const close = (a, b) => a && b && Math.abs(a - b) / Math.max(a, b) <= 0.05;
+  const samePrice = (a, b) => close(a.price_cold, b.price_cold) || close(a.price_warm, b.price_warm);
+  for (const l of ALL) {
+    parent[l.id] ??= l.id;
+    const t = normTitle(l.title);
+    if (t.length >= 25 && t.split(" ").length >= 4) {  // nur aussagekräftige Titel, nicht "1-Zimmer-Wohnung"
+      if (l.area) link(`t|${t.slice(0, 80)}|a${Math.round(l.area)}`, l.id);  // + gleiche Fläche
+      if (l.price_cold) link(`t|${t.slice(0, 80)}|c${Math.round(l.price_cold)}`, l.id);  // + gleiche Kaltmiete
+      if (l.price_warm) link(`t|${t.slice(0, 80)}|w${Math.round(l.price_warm)}`, l.id);  // + gleiche Warmmiete
+    }
+    if (l.area && l.rooms && Math.round(l.area * 100) % 100 !== 0) {  // krumme Fläche wie 75,36 m² + Zimmer + Preis
+      const k = l.area.toFixed(2) + "|" + l.rooms;
+      const list = byArea.get(k) || [];
+      for (const oid of list) if (samePrice(byId.get(oid), l)) union(oid, l.id);
+      byArea.set(k, [...list, l.id]);
+    }
+  }
+  GROUP = {}; MEMBERS = {};
+  for (const l of ALL) { const g = find(l.id); GROUP[l.id] = g; (MEMBERS[g] ??= []).push(l); }
 }
+const siblings = l => MEMBERS[GROUP[l.id]] || [l];
 
 // ---------- Filtern ----------
 function passes(l, view = F.view) {
   if (view === "hidden") return !!l.hidden;
   if (l.hidden) return false;
+  // abgelehnt/ausgeblendet auf einem Portal = auf allen Portalen weg (Favoriten bleiben sichtbar)
+  if (!l.favorite && siblings(l).some(s => s.hidden)) return false;
   if (view === "fav" && !l.favorite) return false;
   if (!l.active && view !== "fav") return false;  // offline nur noch unter Favoriten (mit Hinweis)
   if (view === "new" && l.seen) return false;
@@ -117,10 +148,10 @@ function render() {
     const groups = new Map();
     const out = [];
     for (const l of list) {
-      const k = dupKey(l);
-      if (k && groups.has(k)) { groups.get(k)._dupes.push(l); continue; }
+      const k = GROUP[l.id];
+      if (groups.has(k)) { groups.get(k)._dupes.push(l); continue; }
       l._dupes = [];
-      if (k) groups.set(k, l);
+      groups.set(k, l);
       out.push(l);
     }
     list = out;
@@ -304,13 +335,21 @@ function toggle(id, field) {
 
 // ---------- Swipe-Ansicht ----------
 const UNDO = [];
+// in dieser Sitzung geswipt – schützt davor, dass eine Karte wiederkommt, wenn die Liste neu geladen wird,
+// bevor die Bewertung beim Server angekommen ist
+const SWIPED = new Set();
 let swCurrent = null, swPhoto = 0, swDragging = false, swForce = false;
 
 function swipeDeck() {
   // Unbewertete Wohnungen aus den aktuellen Filtern; mit Modell die besten Matches zuerst
   const byMatch = (a, b) => (MATCH.scores[b.id] ?? 0) - (MATCH.scores[a.id] ?? 0) || b.first_seen - a.first_seen;
   const byNew = (a, b) => b.first_seen - a.first_seen;
-  return ALL.filter(l => l.rating == null && passes(l, "all")).sort(MATCH.mode === "none" ? byNew : byMatch);
+  // jede Wohnung nur einmal: schon bewertet/geswipt auf irgendeinem Portal -> alle Fassungen raus,
+  // sonst nur die Fassung mit dem besten Match (bzw. die neueste) zeigen
+  const done = l => siblings(l).some(s => s.rating != null || SWIPED.has(s.id));
+  const seenGroups = new Set();
+  return ALL.filter(l => passes(l, "all") && !done(l)).sort(MATCH.mode === "none" ? byNew : byMatch)
+    .filter(l => !seenGroups.has(GROUP[l.id]) && seenGroups.add(GROUP[l.id]));
 }
 
 function pickNext(deck) {
@@ -508,6 +547,7 @@ function decide(like, reason) {
   card.classList.add("fly");
   card.style.transform = `translate(${like ? 140 : -140}%, 40px) rotate(${like ? 25 : -25}deg)`;
   card.style.opacity = "0";
+  SWIPED.add(l.id);
   UNDO.push({ id: l.id, rating: l.rating ?? null, favorite: l.favorite || 0, hidden: l.hidden || 0, reason: l.reason ?? null,
               user_gone: l.user_gone || 0 });
   setTimeout(() => {
@@ -574,6 +614,7 @@ function undo() {
   if (!u) return;
   closeAsk();
   const { id, ...prev } = u;
+  SWIPED.delete(id);
   patch(id, prev);
   swCurrent = ALL.find(x => x.id === id) || null;
   swPhoto = 0;
@@ -681,6 +722,7 @@ function bindInputs() {
 async function loadListings() {
   ALL = await (await fetch("/api/listings")).json();
   if (BROKEN.size) ALL.forEach(l => { if (l.images) l.images = l.images.filter(u => !BROKEN.has(u)); });
+  buildGroups();
   renderSources();
   render();
 }

@@ -61,7 +61,7 @@ Inserate, deren Foto ImmoScout gelöscht hat oder deren Mail älter als 14 Tage 
   Stichworte (WBS 70, P2, Plattenbau …), KI-Gebäudetyp; Altbau/Neubau-Merkmale ziehen ab.
   Schwelle per Schieberegler; die Gründe stehen in der Detailansicht.
 - Befristet/Zwischenmiete, möbliert, WBS-pflichtig, Erdgeschoss, eigene Ausschluss-Wörter.
-- Duplikate (gleiche Wohnung auf mehreren Portalen) werden zusammengefasst.
+- Duplikate (gleiche Wohnung auf mehreren Portalen, erkannt über Titel + Fläche/Preis bzw. exakte Fläche + Zimmer + Preis) werden zusammengefasst: beim Swipen kommt jede Wohnung nur einmal, und eine Ablehnung gilt für alle Portale.
 - Favoriten, Ausblenden, Status (angefragt, Besichtigung …) und Notizen pro Wohnung.
 
 ## Swipen & Match
