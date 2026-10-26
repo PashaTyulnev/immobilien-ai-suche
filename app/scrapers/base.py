@@ -6,6 +6,9 @@ from ..http import Fetcher
 
 # Gesuche sind für die Suche nutzlos (Tauschangebote werden markiert und per Filter ausgeblendet)
 SKIP_TITLE = re.compile(r"^\W*(suche|gesucht|wir suchen|ich suche)\b", re.I)
+# Hinweise auf gelöschte/deaktivierte Inserate (z.B. Kleinanzeigen: "Die gewünschte Anzeige ist nicht mehr verfügbar")
+GONE = re.compile(r"(Anzeige|Inserat|Angebot|Expos[eé]|Objekt)\w* (ist|wurde) (leider )?(nicht mehr (verfügbar|aktiv|online)"
+                  r"|deaktiviert|gelöscht|entfernt)", re.I)
 
 
 class Scraper:
@@ -23,6 +26,23 @@ class Scraper:
     def detail(self, item: dict) -> dict:
         """Expose laden -> zusätzliche Felder, 'raw_text' und 'images'."""
         raise NotImplementedError
+
+    def check(self, item: dict) -> bool | None:
+        """Ist das Inserat noch online? True/False, None = nicht feststellbar (Portal blockt gerade)."""
+        r = self.fetcher.get(item["url"])
+        if r.status_code in (404, 410):
+            return False
+        if r.status_code in (401, 403, 429) or r.status_code >= 500:
+            return None
+        s = BeautifulSoup(r.text, "lxml")
+        try:
+            check_blocked(s)
+        except Blocked:
+            return None
+        if item["ext_id"] not in str(r.url):
+            return False  # auf Such- oder Startseite umgeleitet
+        head = " ".join(s.get_text(" ").split())[:4000]
+        return not GONE.search(head)
 
     # Hilfen
     def soup(self, url: str) -> BeautifulSoup:

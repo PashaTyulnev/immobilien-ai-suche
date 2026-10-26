@@ -53,6 +53,7 @@ function passes(l, view = F.view) {
   if (view === "hidden") return !!l.hidden;
   if (l.hidden) return false;
   if (view === "fav" && !l.favorite) return false;
+  if (!l.active && view !== "fav") return false;  // offline nur noch unter Favoriten (mit Hinweis)
   if (view === "new" && l.seen) return false;
   if (F.sources[l.source] === false) return false;
 
@@ -209,6 +210,7 @@ async function openDetail(id) {
     ["Aufzug", yn(l.elevator)], ["Möbliert", yn(l.furnished)], ["Befristet", yn(l.temporary)], ["Tausch", yn(l.swap)], ["WBS nötig", yn(l.wbs_required)],
     ["Frei ab", l.available_from ?? "–"], ["Adresse", l.address || [l.zip, l.district].filter(Boolean).join(" ") || "–"],
     ["Anbieter", l.provider ?? "–"], ["Quelle", SOURCES[l.source] || l.source], ["Gefunden", new Date(l.first_seen * 1000).toLocaleString("de-DE")],
+    ["Zuletzt in Liste", new Date(l.last_seen * 1000).toLocaleString("de-DE")],
   ];
   const statuses = ["", "interessant", "angefragt", "Besichtigung", "beworben", "abgesagt", "passt nicht"];
   const dlg = $("#detail");
@@ -233,6 +235,8 @@ async function openDetail(id) {
         <div class="d-actions">
           <button class="btn" data-dfav>${l.favorite ? "★ Favorit" : "☆ Merken"}</button>
           <button class="btn" data-dhide>${l.hidden ? "↺ Einblenden" : "✕ Ausblenden"}</button>
+          <button class="btn" data-dcheck>Noch online?</button>
+          <span class="online-state" id="d-online">${onlineText(l)}</span>
           <select id="d-status">${statuses.map(s => `<option ${s === (l.status || "") ? "selected" : ""} value="${s}">${s || "– Status –"}</option>`).join("")}</select>
         </div>
         <textarea class="d-note" id="d-note" placeholder="Notizen (z.B. Besichtigungstermin, Eindruck)">${esc(l.note || "")}</textarea>
@@ -256,11 +260,29 @@ async function openDetail(id) {
     const t = e.target.closest(".thumbs img"); if (t) show(Number(t.dataset.i));
     if (e.target.closest("[data-dfav]")) { toggle(id, "favorite"); e.target.textContent = local.favorite ? "★ Favorit" : "☆ Merken"; }
     if (e.target.closest("[data-dhide]")) { toggle(id, "hidden"); dlg.close(); }
+    if (e.target.closest("[data-dcheck]")) checkOnline(id);
   };
   dlg.onkeydown = e => { if (imgs.length > 1 && e.key === "ArrowRight") show(idx + 1); if (imgs.length > 1 && e.key === "ArrowLeft") show(idx - 1); };
   $("#d-status", dlg).onchange = e => patch(id, { status: e.target.value });
   $("#d-note", dlg).onchange = e => patch(id, { note: e.target.value });
   dlg.showModal();
+}
+
+function onlineText(l) {
+  const when = l.checked_at ? ` (geprüft ${new Date(l.checked_at * 1000).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })})` : "";
+  return l.active ? `<span class="ok">● online</span>${when}` : `<span class="gone">● offline</span>${when}`;
+}
+
+async function checkOnline(id) {
+  const el = $("#d-online");
+  el.textContent = "prüfe …";
+  let res = {};
+  try { res = await (await fetch("/api/check/" + encodeURIComponent(id), { method: "POST" })).json(); } catch {}
+  const l = ALL.find(x => x.id === id);
+  if (res.online == null) { el.textContent = "nicht prüfbar – Portal blockt gerade"; return; }
+  if (l) Object.assign(l, { active: res.online ? 1 : 0, checked_at: res.checked_at });
+  el.innerHTML = onlineText(l || { active: res.online, checked_at: res.checked_at });
+  render();
 }
 
 async function patch(id, data) {

@@ -216,3 +216,8 @@ a { color: var(--accent); }
   .d-grid { grid-template-columns: 1fr; }
   .top { padding: 10px 16px; }
 }
+
+/* Online-Status in der Detailansicht */
+.online-state { align-self: center; font-size: 12.5px; color: var(--muted); }
+.online-state .ok { color: var(--good); font-weight: 600; }
+.online-state .gone { color: var(--bad); font-weight: 600; }

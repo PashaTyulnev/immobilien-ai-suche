@@ -140,3 +140,7 @@ class ImmoScoutMail(Scraper):
 
     def detail(self, item):
         return {}
+
+    def check(self, item):
+        # Die Website blockt Abrufe; gelöschtes Foto ist das verlässliche Zeichen für "vergeben"
+        return None if not item.get("images") else photo_alive(item)

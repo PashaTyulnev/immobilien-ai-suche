@@ -34,8 +34,16 @@ def index():
 
 @app.get("/api/listings")
 def listings(inactive: bool = False):
-    rows = db.query("1=1" if inactive else "active=1", columns=LIST_COLUMNS + ",substr(raw_text,1,3000) AS raw_excerpt")
-    return rows
+    # Favoriten/Likes auch offline mitliefern, damit sie mit "offline"-Hinweis sichtbar bleiben
+    where = "1=1" if inactive else "active=1 OR favorite=1 OR rating=1"
+    return db.query(where, columns=LIST_COLUMNS + ",substr(raw_text,1,3000) AS raw_excerpt")
+
+
+@app.post("/api/check/{lid:path}")
+def check(lid: str):
+    if not db.get(lid):
+        raise HTTPException(404)
+    return pipeline.check_listing(lid)
 
 
 @app.get("/api/listings/{lid:path}")

@@ -22,6 +22,7 @@ STATE_FIELDS = {
     "detail_done": "INTEGER DEFAULT 0", "llm_done": "INTEGER DEFAULT 0", "llm_fields": "TEXT",
     # Rohdaten je Stufe, damit die Extraktion jederzeit ohne neues Laden wiederholt werden kann
     "search_fields": "TEXT", "detail_fields": "TEXT",
+    "checked_at": "REAL",  # letzte gezielte Online-Prüfung der Inseratsseite
 }
 USER_FIELDS = {
     "favorite": "INTEGER DEFAULT 0", "hidden": "INTEGER DEFAULT 0",
@@ -122,6 +123,15 @@ def mark_inactive(source: str, seen_ids: set[str]):
         _conn.executemany("UPDATE listings SET active=0 WHERE id=?", [(i,) for i in gone])
         _conn.commit()
     return len(gone)
+
+
+def mark_stale(source: str, older_than: float) -> int:
+    """Inserate, die seit older_than (Unix-Zeit) in keiner Ergebnisliste mehr auftauchten, als offline markieren."""
+    with _lock:
+        n = _conn.execute("UPDATE listings SET active=0 WHERE source=? AND active=1 AND last_seen < ?",
+                          (source, older_than)).rowcount
+        _conn.commit()
+    return n
 
 
 def log_run(started: float, log: list[str]):

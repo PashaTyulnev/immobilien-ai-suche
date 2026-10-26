@@ -55,11 +55,39 @@ def refresh(lid: str) -> dict:
     return full
 
 
+STALE_DAYS = 3
+
+
+def check_listing(lid: str, sc=None) -> dict:
+    """Inseratsseite gezielt prüfen; setzt active/checked_at. Ergebnis: online True/False/None (unbekannt)."""
+    row = db.get(lid)
+    sc = sc or SCRAPERS[row["source"]](Fetcher(1.0))
+    try:
+        online = sc.check(row)
+    except Exception as e:
+        log(f"Prüfung {lid} fehlgeschlagen: {e}")
+        online = None
+    if online is not None:
+        db.update(lid, active=int(online), checked_at=time.time())
+    return {"online": online, "checked_at": time.time() if online is not None else row.get("checked_at")}
+
+
+def check_watched(sc, name: str):
+    """Favoriten und Likes einer Quelle bei jedem Lauf gezielt prüfen (wenige Abrufe, wichtigste Wohnungen)."""
+    rows = db.query("source=? AND active=1 AND (favorite=1 OR rating=1)", (name,), columns="id")
+    gone = 0
+    for r in rows:
+        if check_listing(r["id"], sc)["online"] is False:
+            gone += 1
+    if rows:
+        log(f"{name}: {len(rows)} Favoriten geprüft, {gone} offline")
+
+
 def run_source(name: str, scfg: dict, delay: float):
     sc = SCRAPERS[name](Fetcher(delay))
     st = STATUS["sources"][name] = {"label": sc.label, "phase": "Ergebnisseiten", "page": 0, "found": 0, "new": 0,
                                     "details": 0, "details_total": 0, "errors": 0, "gone": 0}
-    seen, complete = set(), True
+    seen, complete, failed = set(), True, False
     for page in range(1, scfg.get("max_pages", 10) + 1):
         st["page"] = page
         try:
@@ -68,7 +96,7 @@ def run_source(name: str, scfg: dict, delay: float):
             if page > 1 and "HTTP 404" in str(e):
                 break  # hinter der letzten Seite
             st["errors"] += 1
-            complete = False
+            complete, failed = False, True
             log(f"{name}: Seite {page} fehlgeschlagen: {e}")
             break
         fresh = [i for i in items if f"{name}:{i['ext_id']}" not in seen]
@@ -87,7 +115,12 @@ def run_source(name: str, scfg: dict, delay: float):
         complete = False  # max_pages erreicht -> nicht alles gesehen, nichts als verschwunden markieren
     if complete and seen and sc.tracks_removal:
         st["gone"] = db.mark_inactive(name, seen)
+    elif seen and not failed and sc.tracks_removal:
+        # Liste nur teilweise gelesen (z.B. Kleinanzeigen: max. 40 Seiten): wer 3 Tage in keiner Liste auftauchte, ist weg
+        st["gone"] = db.mark_stale(name, time.time() - STALE_DAYS * 86400)
     log(f"{name}: {st['found']} Inserate, {st['new']} neu, {st['gone']} nicht mehr online")
+    if not failed:
+        check_watched(sc, name)
 
     todo = db.query("source=? AND active=1 AND detail_done=0", (name,))
     if not scfg.get("details", True):

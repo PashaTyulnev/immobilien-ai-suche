@@ -22,7 +22,14 @@ Beim ersten Start wird automatisch ein Suchlauf gestartet, danach alle 4 Stunden
 | Quoka | ✗ keine Städtesuche mehr, kaum Dresdner Angebote |
 
 Erster Lauf dauert länger (jedes Exposé wird einmal geladen), danach werden nur neue Inserate nachgeladen.
-Inserate, die nicht mehr in den Ergebnissen auftauchen, werden als „offline“ markiert.
+
+**Online/offline:**
+- Wurde die Ergebnisliste vollständig gelesen, gelten fehlende Inserate sofort als offline.
+- Bei teilweise gelesenen Listen (z.B. Kleinanzeigen, max. 40 Seiten) gilt ein Inserat als offline, wenn es 3 Tage in keiner Liste auftauchte.
+- Favoriten und Likes werden bei jedem Lauf gezielt auf ihrer Inseratsseite geprüft (gelöscht, umgeleitet, „Anzeige ist nicht mehr verfügbar“).
+- In der Detailansicht prüft „Noch online?“ ein einzelnes Inserat sofort.
+- ImmoScout: gelöschtes Foto = vergeben. Blockt ein Portal gerade (z.B. Immowelt), wird nichts als offline markiert.
+- Offline-Favoriten bleiben unter ★ Favoriten sichtbar, mit „offline“-Hinweis.
 
 ### ImmoScout24 einrichten
 
