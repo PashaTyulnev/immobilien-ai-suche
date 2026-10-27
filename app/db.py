@@ -24,6 +24,7 @@ STATE_FIELDS = {
     # Rohdaten je Stufe, damit die Extraktion jederzeit ohne neues Laden wiederholt werden kann
     "search_fields": "TEXT", "detail_fields": "TEXT",
     "checked_at": "REAL",  # letzte gezielte Online-Prüfung der Inseratsseite
+    "excluded": "INTEGER DEFAULT 0",  # beim Exposé aussortiert (Umland, Kaufobjekt …) – bleibt offline
 }
 USER_FIELDS = {
     "favorite": "INTEGER DEFAULT 0", "hidden": "INTEGER DEFAULT 0",
@@ -47,8 +48,10 @@ def init():
         for name, typ in {**DATA_FIELDS, **STATE_FIELDS, **USER_FIELDS}.items():
             if name not in have:
                 _conn.execute(f"ALTER TABLE listings ADD COLUMN {name} {typ}")
-        # Altbestand ohne gespeicherte Exposé-Rohdaten nochmal laden
-        _conn.execute("UPDATE listings SET detail_done=0 WHERE detail_done=1 AND detail_fields IS NULL AND active=1")
+        # Altbestand ohne gespeicherte Exposé-Rohdaten nochmal laden (auch früher aussortierte, die ein Suchlauf
+        # fälschlich reaktiviert hat – sie werden dabei erneut geprüft und bekommen "excluded")
+        _conn.execute("UPDATE listings SET detail_done=0 WHERE detail_done=1 AND active=1 AND "
+                      "(detail_fields IS NULL OR raw_text IS NULL OR raw_text='')")
         _conn.execute("CREATE TABLE IF NOT EXISTS runs (id INTEGER PRIMARY KEY, started REAL, finished REAL, log TEXT)")
         _conn.commit()
 
@@ -98,8 +101,8 @@ def upsert(item: dict) -> bool:
             # Spalten werden aus search/detail/llm-Feldern neu berechnet (pipeline.refresh), hier nur Rohdaten + Zustand
             fields = {"search_fields": fields["search_fields"], "last_seen": now}
             sets = ",".join(f"{k}=?" for k in fields)
-            # wieder gesehen = wieder aktiv, außer der Nutzer hat es als vergeben gemeldet
-            _conn.execute(f"UPDATE listings SET {sets}, active = CASE WHEN user_gone=1 THEN 0 ELSE 1 END WHERE id=?",
+            # wieder gesehen = wieder aktiv, außer als vergeben gemeldet oder beim Exposé aussortiert
+            _conn.execute(f"UPDATE listings SET {sets}, active = CASE WHEN user_gone=1 OR excluded=1 THEN 0 ELSE 1 END WHERE id=?",
                           [*fields.values(), lid])
         _conn.commit()
     return not exists

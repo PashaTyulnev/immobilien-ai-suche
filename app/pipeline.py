@@ -155,7 +155,8 @@ def run_source(name: str, scfg: dict, delay: float):
         try:
             d = sc.detail(row)
             if d.get("active") is False or SKIP_TITLE.search(d.get("title") or ""):
-                db.update(row["id"], active=0, detail_done=1)
+                # dauerhaft aussortiert (Umland, Kaufobjekt, Gesuch …): darf ein späterer Suchlauf nicht reaktivieren
+                db.update(row["id"], active=0, detail_done=1, excluded=1)
             else:
                 raw = d.pop("raw_text", None)
                 db.update(row["id"], detail_fields={k: v for k, v in d.items() if v not in (None, "", [])},
