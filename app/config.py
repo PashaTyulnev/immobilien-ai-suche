@@ -17,6 +17,13 @@ DEFAULTS = {
         "wggesucht": {"enabled": True, "max_pages": 6, "delay": 6},  # zeigt schnell Captchas
         "immobiliende": {"enabled": True, "max_pages": 15},
         "dresdden": {"enabled": True, "max_pages": 5},  # Johannes & Partner Immobilien
+        # WiD und Wohnungsgenossenschaften (eigene Webseiten, je eine Listenseite)
+        "wid": {"enabled": True, "max_pages": 1},
+        "swg": {"enabled": True, "max_pages": 1},
+        "wgaufbau": {"enabled": True, "max_pages": 1},
+        "ewg": {"enabled": True, "max_pages": 1},
+        "wgs": {"enabled": True, "max_pages": 1},
+        "wgj": {"enabled": True, "max_pages": 1},
         # ImmoScout24 über Suchauftrag-Mails per IMAP; App-Passwort in config.json eintragen, dann enabled: true
         "immoscout": {"enabled": False, "details": False, "user": "", "app_password": "",
                       "imap_host": "imap.gmail.com", "days": 14},  # ältere Mail-Inserate gelten als vergeben

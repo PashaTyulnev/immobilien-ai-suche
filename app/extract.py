@@ -72,6 +72,7 @@ def floor_from(s: str | None) -> int | None:
 def extract_text(text: str) -> dict:
     """Holt die üblichen Felder per Regex aus einem Expose-Text."""
     t = re.sub(r"[ \t\xa0]+", " ", text or "")
+    t = re.sub(r"(\d)\s*m\s*\n?\s*2\b", r"\1 m²", t)  # hochgestellte 2 (m<sup>2</sup>) wird beim Auslesen zu "m 2"
     t = re.sub(r"\s*\n\s*", " | ", t)
     out = {
         "price_cold": _money(t, ["Kaltmiete", "Nettokaltmiete", r"Miete \(kalt\)", r"Miete:"]),
@@ -120,7 +121,7 @@ def extract_text(text: str) -> dict:
         out["furnished"] = None
     if re.search(r"(?:WBS|Wohnberechtigungsschein)(?!\s*-?\s*70)(?:\s+\w+){0,3}\s+(?:erforderlich|notwendig|nötig|benötigt|vorausgesetzt)|nur mit (?:WBS|Wohnberechtigungsschein)", t, re.I):
         out["wbs_required"] = True
-    if re.search(r"\b(?:befristet|Zwischenmiete|zur Untermiete|frei bis|Mietdauer bis|auf Zeit|Zeitwohnen|Monteur)", t, re.I) and not re.search(r"unbefristet", t, re.I):
+    if re.search(r"\b(?:befristet|Zwischenmiete|zur Untermiete|frei bis|Mietdauer bis|auf Zeit|Zeitwohnen|Monteur|Zeitmietvertrag)", t, re.I) and not re.search(r"unbefristet", t, re.I):
         out["temporary"] = True
     # Kleinanzeigen-Feld "Tauschangebot: Kein Tausch" und andere Verneinungen nicht als Tausch werten
     if SWAP.search(re.sub(r"Tauschangebot\W*(?:Kein Tausch|nein)\b|\bkein(?:e|en)?\s+(?:Wohnungs)?tausch\w*", "", t, flags=re.I)):

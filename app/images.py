@@ -9,7 +9,9 @@ from .config import DATA_DIR
 CACHE = DATA_DIR / "img_cache"
 CACHE.mkdir(exist_ok=True)
 HOSTS = ("mms.immowelt.de", "img.kleinanzeigen.de", "media.ohne-makler.net", "www.ohne-makler.net",
-         "img.wg-gesucht.de", "immobilien-api.fly.dev", "pictures.immobilienscout24.de", "www.dresdden.de")
+         "img.wg-gesucht.de", "immobilien-api.fly.dev", "pictures.immobilienscout24.de", "www.dresdden.de",
+         "www.wid-dresden.de", "swg-dresden.de", "www.swg-dresden.de", "www.wgaufbau-dresden.de", "www.ewg-dresden.de",
+         "www.wgs-dresden.de", "www.wgj.de")
 # Quellen mit ablaufenden (signierten) Bild-Links -> komplette Galerie sofort sichern
 CACHE_ALL = {"ohnemakler"}
 

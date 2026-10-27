@@ -1,3 +1,4 @@
+from .coops import COOPS
 from .dresdden import Dresdden
 from .immobiliende import ImmobilienDe
 from .immoscout_mail import ImmoScoutMail
@@ -6,4 +7,4 @@ from .kleinanzeigen import Kleinanzeigen
 from .ohnemakler import OhneMakler
 from .wggesucht import WgGesucht
 
-SCRAPERS = {s.name: s for s in (Immowelt, Kleinanzeigen, OhneMakler, WgGesucht, ImmobilienDe, ImmoScoutMail, Dresdden)}
+SCRAPERS = {s.name: s for s in (Immowelt, Kleinanzeigen, OhneMakler, WgGesucht, ImmobilienDe, ImmoScoutMail, Dresdden, *COOPS)}

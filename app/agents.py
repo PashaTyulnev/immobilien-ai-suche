@@ -22,12 +22,12 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 
 # Feste Startliste: Vermieter mit eigenen Wohnungen, die selten auf den Portalen stehen
 SEED = [
-    {"name": "WiD Wohnen in Dresden", "website": "https://www.wid-dresden.de/"},
-    {"name": "WG Aufbau Dresden eG", "website": "https://www.wgaufbau-dresden.de/"},
-    {"name": "Wohnungsgenossenschaft Glückauf Süd Dresden eG", "website": "https://www.wgs-dresden.de/"},
-    {"name": "Sächsische Wohnungsgenossenschaft Dresden eG", "website": "https://www.swg-dresden.de/"},
-    {"name": "Eisenbahner-Wohnungsbaugenossenschaft Dresden eG", "website": "https://www.ewg-dresden.de/"},
-    {"name": "Wohnungsgenossenschaft Johannstadt eG", "website": "https://www.wgj.de/"},
+    {"name": "WiD Wohnen in Dresden", "website": "https://www.wid-dresden.de/", "covered": "eigene Quelle wid"},
+    {"name": "WG Aufbau Dresden eG", "website": "https://www.wgaufbau-dresden.de/", "covered": "eigene Quelle wgaufbau"},
+    {"name": "Wohnungsgenossenschaft Glückauf Süd Dresden eG", "website": "https://www.wgs-dresden.de/", "covered": "eigene Quelle wgs"},
+    {"name": "Sächsische Wohnungsgenossenschaft Dresden eG", "website": "https://www.swg-dresden.de/", "covered": "eigene Quelle swg"},
+    {"name": "Eisenbahner-Wohnungsbaugenossenschaft Dresden eG", "website": "https://www.ewg-dresden.de/", "covered": "eigene Quelle ewg"},
+    {"name": "Wohnungsgenossenschaft Johannstadt eG", "website": "https://www.wgj.de/", "covered": "eigene Quelle wgj"},
     {"name": "Johannes & Partner Immobilien", "website": "https://www.dresdden.de/", "covered": "eigene Quelle dresdden.de"},
     {"name": "Antje Schmidt Immobilien", "website": "https://www.immoboerse-dd.de/"},
 ]
