@@ -44,6 +44,8 @@ def compute(row: dict) -> dict:
     full.update(special)
     if full.get("price_warm") and full.get("price_cold") and full["price_warm"] < full["price_cold"]:
         full["price_warm"] = None  # unplausibel (warm < kalt): falsche Zahl erwischt -> lieber aus kalt + NK rechnen
+    if full.get("costs_extra") and full.get("price_cold") and full["costs_extra"] >= 0.8 * full["price_cold"]:
+        full["costs_extra"] = None  # Nebenkosten fast so hoch wie die Kaltmiete: falsch erkannt
     if not full.get("district") and full.get("zip") in DRESDEN_ZIP:
         full["district"] = DRESDEN_ZIP[full["zip"]]
     full["plattenbau_score"], full["plattenbau_reasons"] = plattenbau(full)

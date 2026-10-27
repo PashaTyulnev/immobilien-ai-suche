@@ -24,6 +24,13 @@ DEFAULTS = {
         "ewg": {"enabled": True, "max_pages": 1},
         "wgs": {"enabled": True, "max_pages": 1},
         "wgj": {"enabled": True, "max_pages": 1},
+        # Makler mit eigenen Angeboten (gefunden vom Makler-Crawler) und markt.de
+        "edelwert": {"enabled": True, "max_pages": 1},
+        "exit": {"enabled": True, "max_pages": 1},
+        "viarealis": {"enabled": True, "max_pages": 1},
+        "protze": {"enabled": True, "max_pages": 1},
+        "uniplan": {"enabled": True, "max_pages": 1, "details": False},
+        "marktde": {"enabled": True, "max_pages": 20, "delay": 2},
         # ImmoScout24 über Suchauftrag-Mails per IMAP; App-Passwort in config.json eintragen, dann enabled: true
         "immoscout": {"enabled": False, "details": False, "user": "", "app_password": "",
                       "imap_host": "imap.gmail.com", "days": 14},  # ältere Mail-Inserate gelten als vergeben

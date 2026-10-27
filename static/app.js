@@ -457,7 +457,7 @@ function phoneLink(p) {
 }
 
 // Portale, deren Inseratsseite die App für die Nummernsuche abrufen kann (Immowelt/ImmoScout blocken)
-const PHONE_FETCH = new Set(["kleinanzeigen", "ohnemakler", "wggesucht", "immobiliende", "dresdden", "wid", "swg", "wgaufbau", "ewg", "wgs", "wgj"]);
+const PHONE_FETCH = new Set(["kleinanzeigen", "ohnemakler", "wggesucht", "immobiliende", "dresdden", "wid", "swg", "wgaufbau", "ewg", "wgs", "wgj", "edelwert", "exit", "viarealis", "protze", "marktde"]);
 
 function phoneBlock(l) {
   if (l.phones?.length) return `<div class="phone big">${l.phones.map(phoneLink).join("")}</div>`;

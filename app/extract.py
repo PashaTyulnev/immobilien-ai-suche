@@ -26,14 +26,15 @@ EURO = r"\s*(?:€|EUR\b|Euro\b|,-)(?!\s*/\s*(?:m|qm))"
 
 
 def _money(text, labels, lo=20, hi=10000):
-    for label in labels:
-        pats = [label + r"(?:[^0-9€|]{0,40}?)" + SEP + NUM + EURO,  # Bezeichnung -> Wert
-                NUM + EURO + SEP + r"(?:\(?[^|0-9]{0,15}\)?" + SEP + r")?" + label]  # Wert -> Bezeichnung
-        for pat in pats:
-            for m in re.finditer(pat, text, re.I):
-                v = num(m.group(1))
-                if v is not None and lo <= v <= hi:
-                    return v
+    # Erst überall "Bezeichnung -> Wert" suchen, erst danach rückwärts "Wert -> Bezeichnung": sonst wird bei
+    # "Kaltmiete: | 1.000 € | Nebenkosten: | …" die Kaltmiete fälschlich als Nebenkosten gelesen
+    forward = [label + r"(?:[^0-9€|]{0,40}?)" + SEP + NUM + EURO for label in labels]
+    backward = [NUM + EURO + SEP + r"(?:\(?[^|0-9]{0,15}\)?" + SEP + r")?" + label for label in labels]
+    for pat in forward + backward:
+        for m in re.finditer(pat, text, re.I):
+            v = num(m.group(1))
+            if v is not None and lo <= v <= hi:
+                return v
     return None
 
 

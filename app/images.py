@@ -11,7 +11,8 @@ CACHE.mkdir(exist_ok=True)
 HOSTS = ("mms.immowelt.de", "img.kleinanzeigen.de", "media.ohne-makler.net", "www.ohne-makler.net",
          "img.wg-gesucht.de", "immobilien-api.fly.dev", "pictures.immobilienscout24.de", "www.dresdden.de",
          "www.wid-dresden.de", "swg-dresden.de", "www.swg-dresden.de", "www.wgaufbau-dresden.de", "www.ewg-dresden.de",
-         "www.wgs-dresden.de", "www.wgj.de")
+         "www.wgs-dresden.de", "www.wgj.de", "imagecache.markt.de", "edelwert-immobilien.de", "immo.screenwork.de",
+         "www.exit-immobilien.de", "viarealis.de", "www.beate-protze-immobilien.de", "www.uniplan-gruppe.com")
 # Quellen mit ablaufenden (signierten) Bild-Links -> komplette Galerie sofort sichern
 CACHE_ALL = {"ohnemakler"}
 

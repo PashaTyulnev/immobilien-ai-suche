@@ -19,6 +19,8 @@ Beim ersten Start wird automatisch ein Suchlauf gestartet, danach alle 4 Stunden
 | WG-Gesucht (Wohnungen + 1-Zi.-Wohnungen) | ✓ langsam abgefragt; zeigt bei zu vielen Abrufen ein Captcha → Quelle wird dann für den Lauf übersprungen |
 | immobilien.de | ✓ |
 | dresdden.de (Johannes & Partner Immobilien) | ✓ eigene Mietangebote des Maklers, mit Telefonnummer |
+| markt.de | ✓ Kleinanzeigen, nur Dresdner PLZ, ohne Gesuche/Gewerbe/Stellplätze |
+| Makler: EdelWert, EXIT, VIAREALIS, Beate Protze, uniplan TerraCotta | ✓ eigene Webseiten, nur Mietobjekte in Dresden |
 | WiD, SWG, WG Aufbau, EWG, WG Glückauf Süd, WG Johannstadt | ✓ eigene Webseiten (gemeinsamer Scraper `app/scrapers/coops.py`); Genossenschaften brauchen Anteile |
 | ImmoScout24 | über Suchauftrag-Mails (IMAP), siehe unten – die Website selbst blockt Bots (HTTP 401) |
 | Quoka | ✗ keine Städtesuche mehr, kaum Dresdner Angebote |
