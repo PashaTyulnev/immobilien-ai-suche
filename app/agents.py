@@ -36,6 +36,8 @@ SKIP = re.compile(r"vonovia|buwog|deutsche wohnen|tauschwohnung|homecompany|zeit
                   r"immowelt|immoscout|kleinanzeigen|wg-gesucht|^privat|^frau |^herr ", re.I)
 COMMERCIAL = re.compile(r"gmbh|immobilien|immoblien|verwaltung|wohnen|makler|\bag\b|\bkg\b|e\.\s?k|genossenschaft|"
                         r"hausverwalt|partner|real estate|grundbesitz|vermiet|property|management|immo\b", re.I)
+PORTALS = re.compile(r"immobilien\.de$|immowelt|immonet|immobilienscout|is24|kleinanzeigen|wg-gesucht|ohne-makler|"
+                     r"immobilien-api|google|goo\.gl|youtube|youtu\.be|matterport|facebook|instagram", re.I)
 LEGAL = re.compile(r"\b(gmbh|mbh|ag|kg|se|ug|co|ohg|gbr|e\.?\s?k\.?|eg|haftungsbeschränkt|kundenservice|standort|team)\b", re.I)
 
 # Technik auf der Seite -> Hinweis, wie man an die Angebote kommt
@@ -104,6 +106,8 @@ def _website_from_text(name: str, text: str) -> str | None:
     toks = [t.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss") for t in _tokens(name)]
     for u in re.findall(r"(?:https?://|www\.)[\w.-]+\.[a-z]{2,}", text, re.I):
         host = re.sub(r"^(https?://)?(www\.)?", "", u.lower())
+        if PORTALS.search(host):
+            continue  # Portal-Adresse im Inseratstext ist nicht die Webseite des Maklers
         if any(t in host for t in toks):
             return "https://" + ("www." + host if host.count(".") == 1 else host) + "/"
     return None
@@ -261,6 +265,7 @@ def crawl(log=print) -> list[dict]:
             a["checked_at"] = time.time()
             a.pop("sample_urls", None)
             STATUS["done"] += 1
+        agents = _merge_same_site(agents)
         agents.sort(key=lambda a: (a.get("status") != "eigene Mietangebote", -(a.get("offers") or 0), a["name"].lower()))
         AGENTS.write_text(json.dumps(agents, ensure_ascii=False, indent=1), encoding="utf-8")
         log(f"Makler-Crawler: {len(agents)} Anbieter geprüft, "
@@ -268,6 +273,22 @@ def crawl(log=print) -> list[dict]:
         return agents
     finally:
         STATUS.update(running=False, current=None, finished=time.time())
+
+
+def _merge_same_site(agents: list[dict]) -> list[dict]:
+    """Gleiche Webseite = gleicher Anbieter (z.B. vertippter Name "Immoblien" in einem Inserat)."""
+    out, by_site = [], {}
+    for a in agents:
+        site = re.sub(r"^https?://(www\.)?", "", (a.get("website") or "").lower()).rstrip("/")
+        if site and site in by_site:
+            b = by_site[site]
+            b["listings"] = (b.get("listings") or 0) + (a.get("listings") or 0)
+            b["sources"] = sorted(set(b.get("sources") or []) | set(a.get("sources") or []))
+            continue
+        if site:
+            by_site[site] = a
+        out.append(a)
+    return out
 
 
 def start(log=print) -> bool:
