@@ -36,7 +36,8 @@ SKIP = re.compile(r"vonovia|buwog|deutsche wohnen|tauschwohnung|homecompany|zeit
                   r"immowelt|immoscout|kleinanzeigen|wg-gesucht|^privat|^frau |^herr ", re.I)
 COMMERCIAL = re.compile(r"gmbh|immobilien|immoblien|verwaltung|wohnen|makler|\bag\b|\bkg\b|e\.\s?k|genossenschaft|"
                         r"hausverwalt|partner|real estate|grundbesitz|vermiet|property|management|immo\b", re.I)
-PORTALS = re.compile(r"immobilien\.de$|immowelt|immonet|immobilienscout|is24|kleinanzeigen|wg-gesucht|ohne-makler|"
+# nur das Portal selbst (immobilien.de), nicht Makler-Domains wie beate-protze-immobilien.de
+PORTALS = re.compile(r"(?:^|\.)immobilien\.de$|immowelt|immonet|immobilienscout|is24|kleinanzeigen|wg-gesucht|ohne-makler|"
                      r"immobilien-api|google|goo\.gl|youtube|youtu\.be|matterport|facebook|instagram", re.I)
 LEGAL = re.compile(r"\b(gmbh|mbh|ag|kg|se|ug|co|ohg|gbr|e\.?\s?k\.?|eg|haftungsbeschränkt|kundenservice|standort|team)\b", re.I)
 
