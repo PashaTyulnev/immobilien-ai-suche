@@ -249,3 +249,45 @@ a { color: var(--accent); }
 .agents-table th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); background: var(--panel-2); }
 .agents-table .badge { display: inline-block; }
 @media (max-width: 860px) { .agents-table th:nth-child(3), .agents-table td:nth-child(3), .agents-table th:nth-child(5), .agents-table td:nth-child(5) { display: none; } }
+
+/* Umschalter Karten/Liste */
+.viewbar { display: inline-flex; gap: 2px; background: var(--panel-2); padding: 3px; border-radius: 9px; margin-bottom: 12px; }
+.viewbar button { border: 0; background: transparent; padding: 5px 12px; border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 13px; }
+.viewbar button.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
+
+/* Listenansicht */
+.grid.as-list { display: block; overflow-x: auto; }
+.list-table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); font-size: 13px; }
+.list-table th { background: var(--panel-2); color: var(--muted); font-size: 11.5px; text-transform: uppercase;
+  letter-spacing: .03em; text-align: left; padding: 8px 8px; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.list-table th.sortable { cursor: pointer; }
+.list-table th.sortable:hover, .list-table th.sorted { color: var(--accent); }
+.list-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+.list-table tr.row { cursor: pointer; }
+.list-table tr.row:hover td { background: var(--panel-2); }
+.list-table tr.seen { opacity: .85; }
+.list-table tr.gone { opacity: .5; }
+.list-table .c-img { width: 84px; padding: 4px 8px; }
+.list-table .c-img img { width: 76px; height: 54px; object-fit: cover; border-radius: 6px; display: block; }
+.list-table .c-price b { font-size: 15px; display: block; }
+.list-table .c-price small, .list-table .c-src small { color: var(--muted); font-size: 11.5px; }
+.list-table .c-title { white-space: normal; min-width: 240px; max-width: 420px; }
+.list-table .c-title .title { -webkit-line-clamp: 1; }
+.list-table .flags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.list-table .flags .badge { font-size: 10.5px; padding: 1px 6px; }
+.list-table .c-feat { white-space: normal; min-width: 120px; }
+.list-table .c-feat .fact { font-size: 11px; padding: 1px 5px; margin: 1px; display: inline-block; }
+.list-table .c-src { font-size: 12px; }
+.list-table .c-act .iconbtn { width: 28px; height: 28px; font-size: 14px; background: var(--panel-2); color: var(--text); }
+.list-table .c-act .iconbtn.on { color: var(--star); }
+@media (max-width: 860px) {
+  /* Handy: nur Foto, Miete, Fläche, Zimmer, Wohnung */
+  .list-table th:nth-child(n+8), .list-table td:nth-child(n+8), .list-table th:nth-child(3), .list-table td:nth-child(3),
+  .list-table th:nth-child(6), .list-table td:nth-child(6) { display: none; }
+  .list-table .c-title { min-width: 160px; }
+}
+
+/* Wunsch-Stadtteile */
+.badge.wish { background: #2b6cb0; color: #fff; }
+.wish-box { border-color: #2b6cb0; }
+.wish-box legend { color: #4a90d9; }

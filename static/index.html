@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wohnungssuche Dresden</title>
-<link rel="stylesheet" href="/static/style.css?v=12">
+<link rel="stylesheet" href="/static/style.css?v=15">
 </head>
 <body>
 <header class="top">
@@ -46,6 +46,13 @@
     <div class="field"><span>Etage</span>
       <div class="range"><input id="f-flmin" type="number" placeholder="min"><input id="f-flmax" type="number" placeholder="max"></div></div>
 
+    <fieldset class="wish-box">
+      <legend>📍 Wunsch-Stadtteile</legend>
+      <label class="field"><textarea id="f-wish" rows="2" placeholder="z.B. Cotta, Cossebaude, Briesnitz"></textarea></label>
+      <label class="chk"><input type="checkbox" id="f-wishfirst"> Wunsch-Stadtteile zuerst</label>
+      <label class="chk"><input type="checkbox" id="f-wishonly"> Nur Wunsch-Stadtteile</label>
+    </fieldset>
+
     <fieldset>
       <legend>Muss haben</legend>
       <label class="chk"><input type="checkbox" id="f-balcony"> Balkon / Loggia / Terrasse</label>
@@ -86,6 +93,8 @@
         <option value="price">Miete aufsteigend</option>
         <option value="sqm">€/m² aufsteigend</option>
         <option value="area">Fläche absteigend</option>
+        <option value="rooms">Zimmer absteigend</option>
+        <option value="floor">Etage absteigend</option>
         <option value="platte">Plattenbau-Score aufsteigend</option>
       </select></label>
     <button id="btn-reset" class="btn ghost">Filter zurücksetzen</button>
@@ -107,12 +116,15 @@
       <div class="sw-hint">← nein · → gefällt mir · Leertaste nächstes Foto · ↑ Details · Z rückgängig · bei ✕: 1–9 Grund, T eigener Text, Enter ablehnen, Esc abbrechen</div>
     </section>
     <section id="agents" class="agents" hidden></section>
+    <div class="viewbar" id="viewbar">
+      <button data-layout="cards">▦ Karten</button><button data-layout="list">☰ Liste</button>
+    </div>
     <div id="grid" class="grid"></div>
     <div id="empty" class="empty" hidden>Keine Wohnungen für diese Filter.</div>
   </main>
 </div>
 
 <dialog id="detail" class="detail"></dialog>
-<script src="/static/app.js?v=21"></script>
+<script src="/static/app.js?v=23"></script>
 </body>
 </html>

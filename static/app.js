@@ -12,6 +12,7 @@ const DEFAULT_FILTERS = {
   novonovia: true, noplatte: true, platte: 50, noprice: true, noswap: true, notemp: true, nofurn: true, nowbs: true, noground: false, dupes: true,
   vonoviaWords: "vonovia, buwog, deutsche wohnen, südost woba, woba dresden, gagfah",
   words: "", sources: {}, sort: "new",
+  wish: "Cotta, Cossebaude, Briesnitz", wishFirst: true, wishOnly: false,  // Wunsch-Stadtteile
 };
 let F = loadFilters();
 let ALL = [];
@@ -42,6 +43,9 @@ const textOf = l => (l._text ??= [l.title, l.description, l.provider, l.raw_exce
 const isVonovia = l => { const w = words(F.vonoviaWords); const t = textOf(l); return w.some(x => t.includes(x)); };
 const floorLabel = f => f == null ? null : f === 0 ? "EG" : f < 0 ? "UG" : f + ". OG";
 const isNew = l => !l.seen && (Date.now() / 1000 - l.first_seen) < 3 * 86400;
+// Wunsch-Stadtteil: Name steht in Stadtteil, Adresse oder Titel
+const isWish = l => { const w = words(F.wish || ""); if (!w.length) return false;
+  const t = `${l.district || ""} ${l.address || ""} ${l.title || ""}`.toLowerCase(); return w.some(x => t.includes(x)); };
 
 // ---------- Anbieter, deren Inserate oft schon vergeben sind ----------
 // Gleicher Anbieter heißt je Portal leicht anders ("… GmbH" vs. "… GmbH - Frau X") -> bereinigter Schlüssel
@@ -178,6 +182,7 @@ function passes(l, view = F.view) {
   if (F.novonovia && isVonovia(l)) return false;
   if (F.noplatte && (l.plattenbau_score ?? 0) >= F.platte) return false;
   if (F.noprice && !(warm(l) || l.price_cold)) return false;
+  if (F.wishOnly && !isWish(l)) return false;
   if (F.noswap && l.swap === 1) return false;
   if (F.notemp && l.temporary === 1) return false;
   if (F.nofurn && l.furnished === 1) return false;
@@ -195,19 +200,26 @@ function passes(l, view = F.view) {
 function sortFn() {
   const nz = (v, d) => v == null ? d : v;
   const ms = l => MATCH.scores[l.id] ?? -1;
-  return {
+  const base = {
     match: (a, b) => ms(b) - ms(a) || b.first_seen - a.first_seen,
     new: (a, b) => b.first_seen - a.first_seen,
     price: (a, b) => nz(price(a), 1e9) - nz(price(b), 1e9),
     sqm: (a, b) => nz(sqm(a), 1e9) - nz(sqm(b), 1e9),
     area: (a, b) => nz(b.area, 0) - nz(a.area, 0),
+    rooms: (a, b) => nz(b.rooms, 0) - nz(a.rooms, 0),
+    floor: (a, b) => nz(b.floor, -9) - nz(a.floor, -9),
     platte: (a, b) => (a.plattenbau_score ?? 0) - (b.plattenbau_score ?? 0),
-  }[F.sort];
+  }[F.sort] || ((a, b) => b.first_seen - a.first_seen);
+  return wishFirst(base);
 }
+
+// Wunsch-Stadtteile zuerst, danach die eigentliche Sortierung
+const wishFirst = cmp => F.wishFirst ? (a, b) => (isWish(b) - isWish(a)) || cmp(a, b) : cmp;
 
 // ---------- Rendern ----------
 function render() {
   countGoneProviders();  // nach jeder Meldung sofort aktuell
+  $("#viewbar").hidden = true;  // nur in der normalen Liste sichtbar (unten wieder eingeblendet)
   $("#agents").hidden = !F.agentsView;
   $("#btn-agents").classList.toggle("on", !!F.agentsView);
   if (F.agentsView) {
@@ -237,7 +249,58 @@ function render() {
   $("#counts").textContent = `${list.length} angezeigt · ${active} aktiv gesamt · ${newCount} neu`;
   $("#empty").hidden = list.length > 0;
   const grid = $("#grid");
-  grid.innerHTML = list.slice(0, 600).map(card).join("");
+  $("#viewbar").hidden = false;
+  $$("#viewbar [data-layout]").forEach(b => b.classList.toggle("active", b.dataset.layout === (F.layout || "cards")));
+  grid.classList.toggle("as-list", F.layout === "list");
+  grid.innerHTML = F.layout === "list" ? listTable(list.slice(0, 800)) : list.slice(0, 600).map(card).join("");
+}
+
+// ---------- Listenansicht: kompakte, sortierbare Tabelle ----------
+const LIST_COLS = [  // [Sortierschlüssel, Überschrift]; null = nicht sortierbar
+  [null, ""], ["price", "Miete"], ["sqm", "€/m²"], ["area", "Fläche"], ["rooms", "Zi."], ["floor", "Etage"],
+  [null, "Wohnung"], [null, "Ausstattung"], ["match", "Match"], [null, "Telefon"], ["new", "Quelle / neu"], [null, ""],
+];
+
+function listTable(list) {
+  const head = LIST_COLS.map(([k, t]) => k
+    ? `<th data-sort="${k}" class="sortable ${F.sort === k ? "sorted" : ""}">${t}${F.sort === k ? " ▾" : ""}</th>` : `<th>${t}</th>`).join("");
+  return `<table class="list-table"><thead><tr>${head}</tr></thead><tbody>${list.map(row).join("")}</tbody></table>`;
+}
+
+function row(l) {
+  const w = warm(l), pic = l.images?.[0], p = l.plattenbau_score ?? 0;
+  const flags = [
+    isWish(l) && `<span class="badge wish">📍 Wunschlage</span>`,
+    isNew(l) && `<span class="badge new">NEU</span>`,
+    p >= 50 ? `<span class="badge bad">Platte ${p}</span>` : p >= 30 ? `<span class="badge warn">Platte? ${p}</span>` : "",
+    isVonovia(l) && `<span class="badge bad">Vonovia</span>`,
+    goneWarning(l) && `<span class="badge warn">⚠ oft vergeben</span>`,
+    l.swap === 1 && `<span class="badge bad">Tausch</span>`,
+    l.temporary === 1 && `<span class="badge warn">befristet</span>`,
+    l.wbs_required === 1 && `<span class="badge warn">WBS</span>`,
+    !l.active && `<span class="badge bad">offline</span>`,
+    l._dupes?.length && `<span class="badge">+${l._dupes.length} Portal${l._dupes.length > 1 ? "e" : ""}</span>`,
+  ].filter(Boolean).join("");
+  const yes = [l.balcony === 1 && "Balkon", l.terrace === 1 && "Terrasse", l.garden === 1 && "Garten",
+               l.kitchen === 1 && "EBK", l.elevator === 1 && "Aufzug"].filter(Boolean);
+  const num = v => v == null ? "–" : String(v).replace(".", ",");
+  return `<tr class="row ${l.seen ? "seen" : ""} ${l.active ? "" : "gone"}" data-id="${esc(l.id)}">
+    <td class="c-img">${pic ? `<img loading="lazy" src="${img(pic)}" data-u="${esc(pic)}" onerror="imgFail(this)" alt="">` : ""}</td>
+    <td class="c-price"><b>${eur(w || l.price_cold)}</b><small>${w ? (l.price_cold ? eur(l.price_cold) + " kalt" : "warm") : "kalt"}</small></td>
+    <td>${sqm(l) ? sqm(l).toFixed(2).replace(".", ",") : "–"}</td>
+    <td>${l.area ? num(l.area) + " m²" : "–"}</td>
+    <td>${num(l.rooms)}</td>
+    <td>${floorLabel(l.floor) ?? "–"}</td>
+    <td class="c-title"><div class="title">${esc(l.title || "")}</div>
+      <div class="where">${esc([l.district, l.zip].filter(Boolean).join(" · ") || "Dresden")}${l.provider ? " · " + esc(l.provider) : ""}</div>
+      ${flags ? `<div class="flags">${flags}</div>` : ""}</td>
+    <td class="c-feat">${yes.map(y => `<span class="fact yes">${y}</span>`).join("") || "–"}</td>
+    <td>${MATCH.scores[l.id] != null ? `<span class="badge match">${MATCH.scores[l.id]}%</span>` : "–"}</td>
+    <td class="c-phone">${l.phones?.length ? phoneLink(l.phones[0]).replace(/<span class="tel-label">.*?<\/span>/, "") : "–"}</td>
+    <td class="c-src">${esc(SOURCES[l.source] || l.source)}<br><small>${ago(l.first_seen)}</small></td>
+    <td class="c-act"><button class="iconbtn ${l.favorite ? "on" : ""}" data-act="fav" title="Favorit">${l.favorite ? "★" : "☆"}</button>
+      <button class="iconbtn" data-act="hide" title="${l.hidden ? "Wieder einblenden" : "Ausblenden"}">${l.hidden ? "↺" : "✕"}</button></td>
+  </tr>`;
 }
 
 function card(l) {
@@ -245,6 +308,7 @@ function card(l) {
   const pScore = l.plattenbau_score ?? 0;
   const badges = [
     MATCH.scores[l.id] != null ? `<span class="badge match">${MATCH.scores[l.id]}% Match</span>` : "",
+    isWish(l) ? `<span class="badge wish">📍 Wunschlage</span>` : "",
     l.rating === 1 ? `<span class="badge match">♥</span>` : "",
     isNew(l) ? `<span class="badge new">NEU</span>` : "",
     `<span class="badge">${esc(SOURCES[l.source] || l.source)}</span>`,
@@ -457,7 +521,7 @@ function swipeDeck() {
   // sonst nur die Fassung mit dem besten Match (bzw. die neueste) zeigen
   const done = l => siblings(l).some(s => s.rating != null || SWIPED.has(s.id));
   const seenGroups = new Set();
-  return ALL.filter(l => passes(l, "all") && !done(l)).sort(MATCH.mode === "none" ? byNew : byMatch)
+  return ALL.filter(l => passes(l, "all") && !done(l)).sort(wishFirst(MATCH.mode === "none" ? byNew : byMatch))
     .filter(l => !seenGroups.has(GROUP[l.id]) && seenGroups.add(GROUP[l.id]));
 }
 
@@ -492,6 +556,7 @@ function swCard(l, back) {
   const pScore = l.plattenbau_score ?? 0;
   const tags = [
     MATCH.scores[l.id] != null ? `<span class="badge match">${MATCH.scores[l.id]}% Match</span>` : "",
+    isWish(l) ? `<span class="badge wish">📍 Wunschlage</span>` : "",
     `<span class="badge">${esc(SOURCES[l.source] || l.source)}</span>`,
     pScore >= 50 ? `<span class="badge bad">Platte ${pScore}</span>` : pScore >= 30 ? `<span class="badge warn">Platte? ${pScore}</span>` : "",
     isVonovia(l) ? `<span class="badge bad">Vonovia</span>` : "",
@@ -750,6 +815,10 @@ async function refreshMatch() {
 function bindSwipe() {
   $("#btn-swipe").onclick = () => { F.swipe = !F.swipe; F.agentsView = false; saveFilters(); render(); };
   $("#btn-agents").onclick = () => { F.agentsView = !F.agentsView; saveFilters(); render(); };
+  $("#viewbar").addEventListener("click", e => {
+    const b = e.target.closest("[data-layout]"); if (!b) return;
+    F.layout = b.dataset.layout; saveFilters(); render();
+  });
   $("#sw-yes").onclick = () => decide(true);
   $("#sw-no").onclick = askReason;
   $("#sw-undo").onclick = undo;
@@ -790,6 +859,7 @@ const BIND = {
   "#f-elevator": "elevator", "#f-garden": "garden", "#f-photos": "photos", "#f-unknown": "unknown", "#f-novonovia": "novonovia",
   "#f-noplatte": "noplatte", "#f-platte": "platte", "#f-noprice": "noprice", "#f-noswap": "noswap", "#f-notemp": "notemp", "#f-nofurn": "nofurn", "#f-nowbs": "nowbs",
   "#f-noground": "noground", "#f-dupes": "dupes", "#f-vonovia-words": "vonoviaWords", "#f-words": "words", "#f-sort": "sort",
+  "#f-wish": "wish", "#f-wishfirst": "wishFirst", "#f-wishonly": "wishOnly",
 };
 function syncInputs() {
   for (const [sel, key] of Object.entries(BIND)) {
@@ -826,7 +896,9 @@ function bindInputs() {
   $("#btn-scrape").onclick = async () => { await fetch("/api/scrape", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); pollStatus(); };
   $("#grid").addEventListener("click", e => {
     if (e.target.closest("a")) return;  // Telefon-Link: anrufen statt Details öffnen
-    const c = e.target.closest(".card"); if (!c) return;
+    const th = e.target.closest("th[data-sort]");  // Listenansicht: Spaltenkopf sortiert
+    if (th) { F.sort = th.dataset.sort; $("#f-sort").value = F.sort; saveFilters(); render(); return; }
+    const c = e.target.closest(".card, .row"); if (!c) return;
     const act = e.target.closest("[data-act]");
     if (act) { e.stopPropagation(); toggle(c.dataset.id, act.dataset.act === "fav" ? "favorite" : "hidden"); return; }
     openDetail(c.dataset.id);

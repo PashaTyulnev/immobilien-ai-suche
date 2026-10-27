@@ -42,6 +42,8 @@ def compute(row: dict) -> dict:
                 p[k] = None
     full = merge(*parts)
     full.update(special)
+    if full.get("price_warm") and full.get("price_cold") and full["price_warm"] < full["price_cold"]:
+        full["price_warm"] = None  # unplausibel (warm < kalt): falsche Zahl erwischt -> lieber aus kalt + NK rechnen
     if not full.get("district") and full.get("zip") in DRESDEN_ZIP:
         full["district"] = DRESDEN_ZIP[full["zip"]]
     full["plattenbau_score"], full["plattenbau_reasons"] = plattenbau(full)
