@@ -104,3 +104,12 @@ Daten liegen in `data/wohnungen.db` (SQLite), Bilder werden in `data/img_cache/`
   Ansprechpartner; wird im Inserat eine Ansprechperson genannt, steht deren Nummer zuerst).
 - „☎ Nummer suchen“ lädt bei Bedarf die Inseratsseite neu (nicht bei Immowelt/ImmoScout, die blocken Abrufe).
 - Auf dem Handy startet ein Tipp auf die Nummer direkt den Anruf.
+
+## Makler-Crawler („🏢 Makler“)
+
+Sammelt Dresdner Makler/Vermieter (gewerbliche Anbieter aus den Inseraten + Startliste mit WiD und
+Wohnungsgenossenschaften), findet ihre Webseite (Inseratstext, immobilien.de-Maklerprofil oder Name geraten
+und geprüft) und schaut auf Startseite + bis zu 12 Unterseiten, ob dort eigene Mietangebote stehen.
+Ergebnis je Anbieter: eigene Mietangebote / Makler-Software (onOffice, FlowFact, Wohnungshelden …) /
+nur Immowelt- bzw. ImmoScout-Modul (schon abgedeckt) / keine Angebote. Beachtet robots.txt, 1 s Abstand je Seite.
+Seiten mit eigenen Angeboten sind Kandidaten für einen eigenen Scraper (wie dresdden.de).

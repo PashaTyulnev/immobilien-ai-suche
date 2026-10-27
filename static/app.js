@@ -69,6 +69,48 @@ function goneWarning(l) {
   return n >= WARN_AFTER && !l.user_gone ? n : 0;
 }
 
+// ---------- Makler-Ansicht: welche Dresdner Makler bieten auf ihrer Webseite eigene Wohnungen an ----------
+const AGENT_ORDER = ["eigene Mietangebote", "Makler-Software gefunden", "Vermietungsseite ohne erkennbare Angebote",
+  "schon als Quelle eingebaut", "nur Portal-Modul (schon abgedeckt)", "keine Mietangebote gefunden", "keine Webseite gefunden", "nicht erreichbar"];
+const AGENT_STYLE = { "eigene Mietangebote": "match", "Makler-Software gefunden": "warn", "Vermietungsseite ohne erkennbare Angebote": "warn",
+  "schon als Quelle eingebaut": "new" };
+
+async function renderAgents() {
+  const box = $("#agents");
+  let data = { status: {}, agents: [] };
+  try { data = await (await fetch("/api/agents")).json(); } catch {}
+  const st = data.status, list = data.agents;
+  const counts = {};
+  list.forEach(a => counts[a.status] = (counts[a.status] || 0) + 1);
+  $("#counts").textContent = `Makler · ${list.length} Anbieter geprüft`;
+  const sorted = [...list].sort((a, b) => (AGENT_ORDER.indexOf(a.status) - AGENT_ORDER.indexOf(b.status)) || (b.offers || 0) - (a.offers || 0));
+  box.innerHTML = `
+    <div class="agents-head">
+      <div>
+        <h2>Dresdner Makler &amp; Vermieter</h2>
+        <div class="sub">Gesammelt aus deinen Inseraten + Genossenschaften/WiD. Geprüft wird, ob die eigene Webseite Mietangebote zeigt.</div>
+      </div>
+      <button class="btn primary" id="btn-agents-crawl" ${st.running ? "disabled" : ""}>
+        ${st.running ? `prüfe … ${st.done}/${st.total}` : list.length ? "Neu prüfen" : "Makler prüfen"}</button>
+    </div>
+    ${st.running ? `<div class="sub">Gerade: ${esc(st.current || "")}</div>` : ""}
+    <div class="agents-sum">${AGENT_ORDER.filter(s => counts[s]).map(s => `<span class="badge ${AGENT_STYLE[s] || ""}">${esc(s)}: ${counts[s]}</span>`).join("")}</div>
+    ${list.length ? `<table class="agents-table"><thead><tr><th>Anbieter</th><th>Ergebnis</th><th>Technik</th><th>Angebote</th><th>Inserate bei uns</th></tr></thead><tbody>
+      ${sorted.map(a => `<tr>
+        <td><b>${esc(a.name)}</b><br>${a.website ? `<a href="${esc(a.website)}" target="_blank" rel="noopener">${esc(a.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))}</a>
+          <span class="sub">${esc(a.website_via || "")}</span>` : `<span class="sub">–</span>`}</td>
+        <td><span class="badge ${AGENT_STYLE[a.status] || ""}">${esc(a.status || "")}</span>
+          ${a.listing_url ? `<br><a href="${esc(a.listing_url)}" target="_blank" rel="noopener">Angebotsseite ↗</a>` : ""}</td>
+        <td>${esc((a.tech || []).join(", ") || "–")}</td>
+        <td>${a.offers || "–"}</td>
+        <td>${a.listings ? `${a.listings} (${esc((a.sources || []).join(", "))})` : "–"}</td>
+      </tr>`).join("")}</tbody></table>`
+      : `<div class="empty">Noch nicht geprüft – „Makler prüfen“ starten (dauert je nach Anzahl 20–40 Minuten).</div>`}`;
+  $("#btn-agents-crawl").onclick = async () => { await fetch("/api/agents/crawl", { method: "POST" }); renderAgents(); };
+  clearTimeout(renderAgents.t);
+  if (st.running && F.agentsView) renderAgents.t = setTimeout(renderAgents, 5000);
+}
+
 // ---------- Duplikate: dieselbe Wohnung auf mehreren Portalen ----------
 // Stadtteil/PLZ und Kalt-/Warmmiete weichen zwischen Portalen oft ab, daher über Titel und Fläche gruppieren.
 let GROUP = {}, MEMBERS = {};
@@ -166,6 +208,13 @@ function sortFn() {
 // ---------- Rendern ----------
 function render() {
   countGoneProviders();  // nach jeder Meldung sofort aktuell
+  $("#agents").hidden = !F.agentsView;
+  $("#btn-agents").classList.toggle("on", !!F.agentsView);
+  if (F.agentsView) {
+    $("#swipe").hidden = $("#grid").hidden = true; $("#empty").hidden = true;
+    renderAgents();
+    return;
+  }
   $("#swipe").hidden = !F.swipe;
   $("#grid").hidden = !!F.swipe;
   $("#btn-swipe").classList.toggle("on", !!F.swipe);
@@ -699,7 +748,8 @@ async function refreshMatch() {
 }
 
 function bindSwipe() {
-  $("#btn-swipe").onclick = () => { F.swipe = !F.swipe; saveFilters(); render(); };
+  $("#btn-swipe").onclick = () => { F.swipe = !F.swipe; F.agentsView = false; saveFilters(); render(); };
+  $("#btn-agents").onclick = () => { F.agentsView = !F.agentsView; saveFilters(); render(); };
   $("#sw-yes").onclick = () => decide(true);
   $("#sw-no").onclick = askReason;
   $("#sw-undo").onclick = undo;

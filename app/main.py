@@ -6,7 +6,7 @@ from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from . import db, images, match, pipeline
+from . import agents, db, images, match, pipeline
 from .config import ROOT, load_config
 from .scrapers import SCRAPERS
 
@@ -38,6 +38,16 @@ def listings(inactive: bool = False):
     # + gemeldete/begründete Ablehnungen: werden für die Anbieter-Warnung ("oft schon vergeben") gezählt
     where = "1=1" if inactive else "active=1 OR favorite=1 OR rating=1 OR user_gone=1 OR reason IS NOT NULL"
     return db.query(where, columns=LIST_COLUMNS + ",substr(raw_text,1,3000) AS raw_excerpt")
+
+
+@app.get("/api/agents")
+def agents_list():
+    return {"status": agents.STATUS, "agents": agents.load()}
+
+
+@app.post("/api/agents/crawl")
+def agents_crawl():
+    return {"started": agents.start(pipeline.log)}
 
 
 @app.post("/api/phone/{lid:path}")
